@@ -1,0 +1,11 @@
+ticket_id,customer_name,email,phone,plan_tier,account_value,product_area,message
+MA-1001,Emma Lawson,emma.lawson@example.com,(213) 555-0142,pro,4200,login,The reset link expired. Please contact emma.lawson@example.com.
+MA-1002,Noah Patel,noah.p@example.org,213-555-0177,basic,300,billing,"I was charged twice this month, and the refund hasn't shown up yet."
+MA-1003,Olivia Chen,olivia.chen@example.net,+1 310 555 0199,enterprise,58000,reports,Exported reports are missing the last week of data.
+MA-1004,Liam O'Brien,liam.obrien@example.com,424.555.0110,pro,3900,login,Two-factor codes arrive late. Call me at 424-555-0110 if you need logs.
+MA-1005,Sofía Ramírez,sofia.r@example.com,(323) 555-0163,basic,250,mobile,"La app se cierra al abrir el panel — crashes every time on Android 15."
+MA-1006,Ethan Brooks,ethan.brooks@example.com,213 555 0188,pro,4100,billing,Invoice PDF shows the wrong company address.
+MA-1007,Ava Kim,ava.kim@example.org,(626) 555-0124,enterprise,61000,reports,"Dashboard charts load slowly, often over 30 seconds."
+MA-1008,Mason Reed,mason.reed@example.com,818-555-0135,basic,180,login,"Password reset email never arrived; try my backup, mason.backup@example.net."
+MA-1009,Isabella Rossi,isabella.rossi@example.com,(714) 555-0191,pro,3600,mobile,Push notifications stopped after the last update.
+MA-1010,Lucas Meyer,lucas.meyer@example.com,562.555.0157,pro,3800,billing,"The upgrade button does nothing; text me at (562) 555-0157."

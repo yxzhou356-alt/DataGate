@@ -1,0 +1,11 @@
+ticket_id,customer_name,email,phone,plan_tier,account_value,product_area,message
+RC-2001,Grace Turner,grace.turner@example.com,(415) 555-0101,pro,5100,sync,Files uploaded from the desktop client don't sync to mobile.
+RC-2002,Henry Walsh,henry.walsh@example.org,415-555-0118,basic,220,billing,"Annual plan renewal charged me at the monthly rate."
+RC-2003,Chloé Dubois,chloe.dubois@example.fr,+1 650 555 0146,enterprise,72000,sharing,"Shared folder links expire too fast; reach me at chloe.dubois@example.fr."
+RC-2004,Daniel Novak,daniel.novak@example.com,510.555.0139,pro,4700,search,Search doesn't find documents by their title.
+RC-2005,Mia Johansson,mia.j@example.com,(408) 555-0172,basic,190,sync,"Sync stalls at 99% — every single time, on two laptops."
+RC-2006,Samuel Ortiz,samuel.ortiz@example.com,707 555 0164,pro,4400,sharing,External collaborators can't open view-only links.
+RC-2007,Zoe Hart,zoe.hart@example.org,(925) 555-0155,enterprise,69000,admin,Audit log export times out for large teams. Call 925-555-0155.
+RC-2008,Jack Fischer,jack.fischer@example.com,831-555-0127,basic,160,billing,Receipt emails go to my old address instead of the new one.
+RC-2009,Lily Nguyen,lily.nguyen@example.com,(209) 555-0193,pro,4300,search,"Search results show deleted files, which is confusing."
+RC-2010,Owen Clarke,owen.clarke@example.com,559.555.0148,pro,4500,admin,"Admin console logs me out every 5 minutes; contact owen.clarke@example.com."

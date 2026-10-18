@@ -1,0 +1,28 @@
+// Human-readable labels for wire identifiers. Shared by all components.
+
+// The UI offers a fixed catalogue; the backend policy decides what is allowed.
+export const PURPOSES = [
+  { id: 'feedback_summary', label: 'Summarize customer feedback' },
+  { id: 'model_training', label: 'Train a model on this data' },
+]
+
+export const DESTINATIONS = [
+  { id: 'demo_receiver', label: 'Demo receiver (local)' },
+  { id: 'public_chatbot', label: 'Public chatbot' },
+]
+
+export function purposeLabel(id: string): string {
+  return PURPOSES.find((p) => p.id === id)?.label ?? id
+}
+
+export function destinationLabel(id: string): string {
+  return DESTINATIONS.find((d) => d.id === id)?.label ?? id
+}
+
+export function redactionLabel(type: string): string {
+  return ({ EMAIL: 'email addresses', PHONE: 'phone numbers' } as Record<string, string>)[type] ?? type
+}
+
+export function decisionLabel(d: string): string {
+  return ({ allow: 'Allowed', redact: 'Allowed with redaction', block: 'Blocked' } as Record<string, string>)[d] ?? d
+}

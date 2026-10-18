@@ -1,0 +1,21 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime state: demo DB, runtime source copies, captures
+backend/var/
+*.sqlite3
+
+# Node / build
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+.DS_Store
