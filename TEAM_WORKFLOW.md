@@ -8,12 +8,16 @@ Team: Priyanka, Ishita, Yuxin, Aishwarya. Assignments are not decided.
 | --- | --- |
 | Baseline human/assistant owner | Aishwarya (requested the build) with Claude; team to confirm |
 | Integration human/assistant owner | UNASSIGNED |
-| Accepted baseline commit | NOT YET ACCEPTED (local candidate commit recorded in README handoff) |
-| Baseline status | IMPLEMENTED_LOCALLY: awaiting second-person run and acceptance |
-| Repository URL | NOT PROVIDED |
+| Accepted baseline commit | NOT YET ACCEPTED; candidate `21f5abc` on local `feature` (tracks `origin/feature`) |
+| Baseline status | IMPLEMENTED_LOCALLY: CSV validation finding B1 outstanding; second-person run and acceptance pending |
+| Repository URL | Local checkout has origin tracking; remote availability/permissions not checked in this review |
 | Application implementation | Present: backend/ (FastAPI) and frontend/ (React + Vite) |
 
 Baseline verification as of Oct 17, 2026, ~7 p.m. PT: `pytest` 43 passed; `npm run lint` clean; `npm run build` OK; headless-Chromium smoke run of sent, hidden-message, revoked, stale-policy and blocked-purpose flows plus a 390px mobile layout check. Not yet run by a second teammate.
+
+Oct 17 independent review/UX follow-up: existing 43 tests passed again, lint/build and whitespace check passed. Chrome verified preview, extra hiding, local send/receipt, form-change invalidation, blocked purpose and 390px layout. Found B1: an unclosed CSV quote is accepted and can merge records; backend was reviewed only and is unchanged. See [BASELINE_UX_REVIEW.md](BASELINE_UX_REVIEW.md) for evidence, scope, checks and handoff. This does not mark baseline acceptance complete.
+
+Current bounded task: requested by the human in this chat, implemented by Codex on existing `feature` at base `21f5abc`; scope is frontend labels/components, their UX state/styles and review/handoff docs. Goal: remove unnecessary machine identifiers from the main flow while retaining inspectable verification, with the existing appearance. Status: REVIEW, uncommitted. No API, backend, schema, dependency or startup changes. The pre-existing package-lock edit is preserved. No other teammate work is assigned by this entry.
 
 A human must claim ownership. Earlier suggested named assignments are not binding. Update this table after real progress, not in anticipation.
 
@@ -53,7 +57,7 @@ These are options, not instructions to implement all of them.
 
 | ID | Workstream | Status | Completion condition |
 | --- | --- | --- | --- |
-| L1 | Review/UX polish | UNASSIGNED | Clear locked actions, extra message hiding, stale/error states, responsive layout; same API |
+| L1 | Review/UX polish | Bounded terminology/information-layer changes in REVIEW (current human request / Codex); wider work unassigned | Clear locked actions, extra message hiding, stale/error states, responsive layout; same API |
 | L2 | Authorization/regression evidence | UNASSIGNED | Broader isolated allowed/denied/revocation tests and factual result summary |
 | L3 | Input quality | UNASSIGNED | Duplicate-ticket and clear row-level errors; no silent data removal |
 | L4 | One real receiver/provider | UNASSIGNED | Only approved canonical content reaches assigned provider; honest failures; regression suite preserved |

@@ -8,7 +8,7 @@ A support analyst wants AI to summarize customer complaints. DataGate controls w
 
 ## Current state
 
-**Baseline v1 is implemented and verified locally** (October 17, 2026). It is not yet accepted by a second teammate or pushed to a shared remote; see [TEAM_WORKFLOW.md](TEAM_WORKFLOW.md).
+**Baseline v1 is implemented locally; the existing checks pass** (October 17, 2026). Independent review found a malformed-CSV validation gap, and second-teammate acceptance is still pending. This checkout tracks `origin/feature` at candidate `21f5abc`; current UX changes are uncommitted. See [baseline/UX review](BASELINE_UX_REVIEW.md) and [TEAM_WORKFLOW.md](TEAM_WORKFLOW.md).
 
 What works today, end to end through the UI and the API:
 
@@ -68,6 +68,8 @@ cd frontend && npm run lint && npm run build     # clean lint, build OK
 
 Tests use a fresh temporary DB and source copies per test. They never touch `backend/var/`.
 
+Latest review: 43 tests passed, lint/build passed, and Chrome UI checks covered preview, extra hiding, approved local send, readable receipts, blocked purpose and 390px layout. The existing tests do not catch an unclosed CSV quote merging records; see B1 in [the review](BASELINE_UX_REVIEW.md). This remains a baseline validation issue, not a passing claim.
+
 ## Demo script (≈4 minutes)
 
 Keep a third terminal in `backend/` with the venv active for the owner controls.
@@ -76,7 +78,7 @@ Keep a third terminal in `backend/` with the venv active for the owner controls.
 2. **Review.** Click *Prepare preview*.
    - Seven columns are removed.
    - Two emails and two phone numbers inside messages are shown as solid redaction bars.
-   - Note the payload hash.
+   - Expand *Technical verification details* to inspect the content fingerprint if needed.
 3. **Hide.** Hide one message. The review revision goes from 1 to 2 and the hash changes.
 4. **Send.** Tick the approval and click *Approve and send*. You get a green *Sent* stamp, the local receiver's acknowledgement ("no external AI model was called") and a receipt where the confirmed hash equals the prepared hash.
 5. **Revoke mid-flight.** Click *Start a new request*, then *Prepare preview*. Before sending, run:
@@ -85,7 +87,7 @@ Keep a third terminal in `backend/` with the venv active for the owner controls.
    ```
    Then click *Approve and send*. Result: *Blocked*, "access was revoked before sending", receiver calls 0. Restore access with `python -m app.demo_control grant --account analyst_a --dataset feedback_a`.
 6. **Stale policy.** Prepare a preview, run `python -m app.demo_control bump-policy --dataset feedback_a`, then send. You'll see "The owner policy changed after the preview" and nothing is sent.
-7. **Forbidden use.** Set Purpose to *Train a model on this data* and prepare a preview. It is blocked immediately with no preview and zero calls.
+7. **Forbidden use.** Under *What do you want to do?*, choose *Train a model on this data* and prepare a preview. It is blocked immediately with no preview and zero calls. Changing a form choice clears any prior preview/approval.
 
 Other owner controls:
 - `python -m app.demo_control sharing --dataset feedback_a --mode none` (then `--mode redacted_only` to restore)
@@ -144,6 +146,7 @@ Where later layers plug in (see the backlog in TEAM_WORKFLOW.md):
 
 - Demo sign-in is simulated authentication, not production login. Anyone running the app can pick either account.
 - Detection covers emails and North-American 10-digit phone formats only. Names, addresses, health details and other secrets inside messages are **not** detected. The synthetic fixture messages deliberately contain no names.
+- CSV validation currently accepts an unclosed quoted field and may merge later records. This needs a bounded backend fix before claiming the no-silent-repair requirement is fully met; see B1 in [the review](BASELINE_UX_REVIEW.md).
 - Analyst approval is not customer consent. Receipts and hashes are evidence of this gateway's actions, not proof of privacy or recipient behavior.
 - Revocation applies at the next protected step. It cannot recall content already sent, and it isn't distributed or atomic across services.
 - The UI loads Public Sans and JetBrains Mono from Google Fonts and falls back to system fonts offline.
