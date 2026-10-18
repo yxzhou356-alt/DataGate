@@ -17,7 +17,7 @@ export function AccountGate({ busy, onSelect }: Props) {
           Permission, review, and evidence before customer data reaches AI.
         </p>
         <p className="gate-caution">
-          Demo sign-in. Pick a seeded analyst to get a session token from the backend.
+          Demo sign-in. Choose a sample analyst to explore their company feedback.
           This is a local simulation, not real authentication.
         </p>
         <div className="gate-accounts">
@@ -25,7 +25,6 @@ export function AccountGate({ busy, onSelect }: Props) {
             <button key={a.id} className="account-card" disabled={busy} onClick={() => onSelect(a.id)}>
               <span className="account-name">{a.name}</span>
               <span className="account-note">{a.note}</span>
-              <code className="account-id">{a.id}</code>
             </button>
           ))}
         </div>

@@ -23,6 +23,27 @@ export function redactionLabel(type: string): string {
   return ({ EMAIL: 'email addresses', PHONE: 'phone numbers' } as Record<string, string>)[type] ?? type
 }
 
+export function redactionCountLabel(type: string, count: number): string {
+  const singular = ({ EMAIL: 'email address', PHONE: 'phone number' } as Record<string, string>)[type] ?? type
+  return `${count} ${count === 1 ? singular : redactionLabel(type)}`
+}
+
+export function sourceFieldLabel(field: string): string {
+  return ({
+    ticket_id: 'ticket IDs', customer_name: 'customer names', email: 'email addresses',
+    phone: 'phone numbers', plan_tier: 'subscription plans', account_value: 'account values',
+    product_area: 'product categories',
+  } as Record<string, string>)[field] ?? field
+}
+
+export function outboundFieldLabel(field: string): string {
+  return ({ message: 'Feedback message only' } as Record<string, string>)[field] ?? field
+}
+
+export function receiverLabel(mode: string): string {
+  return ({ local_demo: 'Local demo receiver' } as Record<string, string>)[mode] ?? mode
+}
+
 export function decisionLabel(d: string): string {
   return ({ allow: 'Allowed', redact: 'Allowed with redaction', block: 'Blocked' } as Record<string, string>)[d] ?? d
 }

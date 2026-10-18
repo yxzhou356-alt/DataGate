@@ -103,6 +103,9 @@ export default function App() {
 
   const draftLocked = !!receipt || !!notice?.needsNewPreview
   const showDraft = preview && preview.status !== 'blocked' && preview.outbound_payload
+  const receiptDatasetName = receipt
+    ? datasets.find((dataset) => dataset.dataset_id === receipt.dataset_id)?.display_name ?? null
+    : null
 
   return (
     <div className="app">
@@ -130,7 +133,10 @@ export default function App() {
           datasets={datasets}
           {...form}
           busy={busy}
-          onChange={(field, value) => setForm((f) => ({ ...f, [field]: value }))}
+          onChange={(field, value) => {
+            setForm((f) => ({ ...f, [field]: value }))
+            resetRequest()
+          }}
           onPreview={makePreview}
         />
 
@@ -139,13 +145,13 @@ export default function App() {
             <ManifestReview
               preview={preview}
               editable={!draftLocked}
-              outcome={receipt ? (receipt.status === 'sent' ? 'sent' : 'not_sent') : notice?.needsNewPreview ? 'not_sent' : 'draft'}
+              outcome={receipt ? (receipt.status === 'sent' ? 'sent' : receipt.status === 'send_failed' ? 'unconfirmed' : 'not_sent') : notice?.needsNewPreview ? 'not_sent' : 'draft'}
               busy={busy}
               onToggle={toggleHidden}
             />
             <div className="side">
               {receipt ? (
-                <OutcomePanel receipt={receipt} sendResult={sendResult} onStartOver={resetRequest} />
+                <OutcomePanel receipt={receipt} sendResult={sendResult} datasetName={receiptDatasetName} onStartOver={resetRequest} />
               ) : (
                 <ApprovalPanel
                   preview={preview}
@@ -159,10 +165,10 @@ export default function App() {
             </div>
           </>
         ) : receipt ? (
-          <div className="side side-wide"><OutcomePanel receipt={receipt} sendResult={null} onStartOver={resetRequest} /></div>
+          <div className="side side-wide"><OutcomePanel receipt={receipt} sendResult={null} datasetName={receiptDatasetName} onStartOver={resetRequest} /></div>
         ) : (
           <section className="placeholder">
-            <p>Choose a dataset, a purpose and a destination, then prepare a preview.</p>
+            <p>Choose a feedback source, what you want to do and where the approved content should go.</p>
             <p>You'll see the exact content that would leave before anything is sent.</p>
           </section>
         )}

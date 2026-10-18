@@ -1,5 +1,5 @@
 import type { PreviewResponse } from '../types'
-import { redactionLabel } from '../labels'
+import { redactionCountLabel, sourceFieldLabel } from '../labels'
 
 const HIDDEN = '[HIDDEN_BY_USER]'
 const TOKEN = /(\[EMAIL\]|\[PHONE\])/g
@@ -7,8 +7,8 @@ const TOKEN = /(\[EMAIL\]|\[PHONE\])/g
 interface Props {
   preview: PreviewResponse
   editable: boolean
-  /** draft: not sent yet; sent: receiver acknowledged; not_sent: blocked, stale or unconfirmed */
-  outcome: 'draft' | 'sent' | 'not_sent'
+  /** Failed delivery is uncertain and must not be described as zero dispatch. */
+  outcome: 'draft' | 'sent' | 'not_sent' | 'unconfirmed'
   busy: boolean
   onToggle: (index: number) => void
 }
@@ -44,15 +44,16 @@ export function ManifestReview({ preview, editable, outcome, busy, onToggle }: P
       <div className="rules">
         <p>
           <strong>Removed columns.</strong>{' '}
-          {preview.dropped_fields.join(', ')}. Only the message text may leave.
+          {preview.dropped_fields.map(sourceFieldLabel).join(', ')}. Only the message text may leave.
         </p>
         <p>
           <strong>Hidden inside messages.</strong>{' '}
           {redactions.length === 0
             ? 'No email addresses or phone numbers were found.'
-            : redactions.map(([t, n]) => `${n} ${redactionLabel(t)}`).join(' and ') + '.'}{' '}
+            : redactions.map(([t, n]) => redactionCountLabel(t, n)).join(' and ') + '.'}{' '}
           The owner requires this and it can't be undone here.
         </p>
+        <p>Automatic detection covers email addresses and supported phone formats. Review for other sensitive details and hide any message you do not want to share.</p>
       </div>
 
       <div className="instruction">
@@ -68,7 +69,7 @@ export function ManifestReview({ preview, editable, outcome, busy, onToggle }: P
             <li key={index} className={`message ${hidden ? 'is-hidden' : ''}`}>
               <span className="message-index" aria-hidden="true">{index + 1}</span>
               <p className="message-text">
-                {hidden ? <span className="hidden-note">Hidden by you. This message won't be sent.</span> : <MessageText text={message} />}
+                {hidden ? <span className="hidden-note">Hidden by you. Only a placeholder is shared, not this message.</span> : <MessageText text={message} />}
               </p>
               {editable && (
                 <button
@@ -88,6 +89,7 @@ export function ManifestReview({ preview, editable, outcome, busy, onToggle }: P
       <p className="manifest-foot">
         {outcome === 'sent' && `${visible} of ${payload.messages.length} messages were sent.`}
         {outcome === 'not_sent' && 'Nothing from this preview was sent.'}
+        {outcome === 'unconfirmed' && 'The receiver was called, but delivery was not confirmed. DataGate will not resend automatically.'}
         {outcome === 'draft' && `${visible} of ${payload.messages.length} messages will be sent after you approve. ` +
           'Hiding a message replaces it with a placeholder, so the receiver still sees how many were withheld.'}
       </p>
