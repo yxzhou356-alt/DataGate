@@ -23,6 +23,11 @@ export function redactionLabel(type: string): string {
   return ({ EMAIL: 'email addresses', PHONE: 'phone numbers' } as Record<string, string>)[type] ?? type
 }
 
+/** Short word shown inside a redaction marker. */
+export function redactionShortLabel(type: string): string {
+  return ({ EMAIL: 'email', PHONE: 'phone' } as Record<string, string>)[type] ?? type.toLowerCase()
+}
+
 export function redactionCountLabel(type: string, count: number): string {
   const singular = ({ EMAIL: 'email address', PHONE: 'phone number' } as Record<string, string>)[type] ?? type
   return `${count} ${count === 1 ? singular : redactionLabel(type)}`

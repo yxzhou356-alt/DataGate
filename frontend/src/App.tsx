@@ -3,8 +3,9 @@ import { api, ApiError } from './api'
 import type { Account, DatasetSummary, PreviewResponse, Receipt, SendResponse } from './types'
 import { AccountGate } from './components/AccountGate'
 import { RequestForm } from './components/RequestForm'
-import { ManifestReview } from './components/ManifestReview'
-import { ApprovalPanel } from './components/ApprovalPanel'
+import { ManifestReview, type ReviewFailure } from './components/ManifestReview'
+import { ApprovalPanel, type ReviewChange } from './components/ApprovalPanel'
+import { HIDDEN_MARKER, countPlaceholders, placeholderTypes, toggleIndex } from './redaction'
 import { OutcomePanel } from './components/OutcomePanel'
 
 interface Session { token: string; account: Account }
@@ -14,13 +15,26 @@ interface Notice { code: string; message: string; action: string; needsNewPrevie
 const STALE_CODES = new Set(['DATASET_CHANGED', 'POLICY_CHANGED', 'PREVIEW_CHANGED', 'REQUEST_NOT_READY', 'REVIEW_CHANGED'])
 // Errors whose final outcome is recorded in a receipt we can show.
 const FINAL_CODES = new Set(['ACCESS_REVOKED', 'PURPOSE_NOT_ALLOWED', 'DESTINATION_NOT_ALLOWED', 'SHARING_PROHIBITED', 'RECEIVER_FAILED', 'ALREADY_DISPATCHED'])
+// Final codes meaning access/owner rules now forbid this request: stop showing its preview.
+const DENIED_CODES = new Set(['ACCESS_REVOKED', 'PURPOSE_NOT_ALLOWED', 'DESTINATION_NOT_ALLOWED', 'SHARING_PROHIBITED'])
+// Review errors where the backend confirms the existing review was left unchanged.
+const REVIEW_UNCHANGED_CODES = new Set(['NO_CONTENT_TO_SEND', 'INVALID_REVIEW'])
+
+/** Approval is bound to one exact draft state; any new revision or hash needs a fresh tick. */
+const approvalKey = (p: PreviewResponse) => `${p.request_id}:${p.review_revision}:${p.preview_hash}`
+
+interface KnownRedactions { requestId: string; byIndex: Record<number, Record<string, number>> }
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [datasets, setDatasets] = useState<DatasetSummary[]>([])
   const [form, setForm] = useState({ datasetId: '', purpose: 'feedback_summary', destination: 'demo_receiver' })
   const [preview, setPreview] = useState<PreviewResponse | null>(null)
-  const [confirmed, setConfirmed] = useState(false)
+  const [approvedKey, setApprovedKey] = useState<string | null>(null)
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null)
+  const [reviewFailure, setReviewFailure] = useState<ReviewFailure | null>(null)
+  const [lastChange, setLastChange] = useState<ReviewChange | null>(null)
+  const [known, setKnown] = useState<KnownRedactions | null>(null)
   const [sendResult, setSendResult] = useState<SendResponse | null>(null)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -46,7 +60,21 @@ export default function App() {
   }, [session, refreshDatasets, showError])
 
   const resetRequest = () => {
-    setPreview(null); setConfirmed(false); setSendResult(null); setReceipt(null); setNotice(null)
+    setPreview(null); setApprovedKey(null); setSendResult(null); setReceipt(null); setNotice(null)
+    setPendingIndex(null); setReviewFailure(null); setLastChange(null); setKnown(null)
+  }
+
+  /** Stores a server preview and remembers per-message placeholder counts from its (already redacted) text. */
+  const acceptPreview = (p: PreviewResponse) => {
+    setPreview(p)
+    const types = placeholderTypes(Object.keys(p.redaction_counts))
+    setKnown((prev) => {
+      const byIndex = prev?.requestId === p.request_id ? { ...prev.byIndex } : {}
+      p.outbound_payload?.messages.forEach((m, i) => {
+        if (m !== HIDDEN_MARKER) byIndex[i] = countPlaceholders(m, types)
+      })
+      return { requestId: p.request_id, byIndex }
+    })
   }
 
   const run = async (fn: () => Promise<void>) => {
@@ -71,27 +99,56 @@ export default function App() {
     resetRequest()
     await refreshDatasets(session.token)
     const p = await api.preview(session.token, form.datasetId, form.purpose, form.destination)
-    setPreview(p)
+    acceptPreview(p)
     if (p.status === 'blocked') await loadReceipt(session.token, p.request_id)
   })
 
-  const toggleHidden = (index: number) => run(async () => {
-    if (!session || !preview || preview.review_revision === null) return
-    const current = new Set(preview.hidden_message_indices)
-    if (current.has(index)) current.delete(index); else current.add(index)
-    const next = await api.review(session.token, preview.request_id, preview.review_revision, [...current].sort((a, b) => a - b))
-    setPreview(next)
-    setConfirmed(false) // a changed payload needs a fresh approval
-  })
+  const toggleHidden = async (index: number) => {
+    if (!session || !preview || preview.review_revision === null || busy) return
+    const before = preview
+    // Withdraw approval before the request leaves, so a failed or slow PATCH never
+    // leaves the checkbox bound to the old preview.
+    setApprovedKey(null)
+    setReviewFailure(null)
+    setPendingIndex(index)
+    setBusy(true)
+    try {
+      const next = await api.review(session.token, before.request_id, before.review_revision!, toggleIndex(before.hidden_message_indices, index))
+      acceptPreview(next)
+      setLastChange({ fromRevision: before.review_revision!, toRevision: next.review_revision!, previousHash: before.preview_hash })
+    } catch (err) {
+      if (err instanceof ApiError && DENIED_CODES.has(err.code)) {
+        // Access or owner rules changed: the request is now blocked. Drop the preview content.
+        setPreview(null)
+        await loadReceipt(session.token, before.request_id).catch(() => undefined)
+        await refreshDatasets(session.token).catch(() => undefined)
+        showError(err)
+      } else if (err instanceof ApiError && (STALE_CODES.has(err.code) || err.code === 'INVALID_SESSION' || err.code === 'AUTH_REQUIRED')) {
+        showError(err)
+      } else if (err instanceof ApiError) {
+        setReviewFailure({
+          code: err.code, message: err.message, action: err.action, index,
+          previewUnchanged: REVIEW_UNCHANGED_CODES.has(err.code),
+        })
+      } else {
+        setReviewFailure({ code: 'UNKNOWN', message: 'The review change failed.', action: 'Try again.', index, previewUnchanged: false })
+      }
+    } finally {
+      setPendingIndex(null)
+      setBusy(false)
+    }
+  }
 
   const sendNow = () => run(async () => {
     if (!session || !preview || !preview.preview_hash || preview.review_revision === null) return
+    if (approvedKey !== approvalKey(preview) || pendingIndex !== null || reviewFailure) return
     try {
       const result = await api.send(session.token, preview.request_id, preview.review_revision, preview.preview_hash)
       setSendResult(result)
       await loadReceipt(session.token, preview.request_id)
     } catch (err) {
       if (err instanceof ApiError && FINAL_CODES.has(err.code)) {
+        if (DENIED_CODES.has(err.code)) setPreview(null) // no longer authorized to view this preview
         await loadReceipt(session.token, preview.request_id).catch(() => undefined)
         if (err.code === 'ACCESS_REVOKED') await refreshDatasets(session.token).catch(() => undefined)
       }
@@ -102,6 +159,13 @@ export default function App() {
   if (!session) return <AccountGate busy={busy} onSelect={signIn} />
 
   const draftLocked = !!receipt || !!notice?.needsNewPreview
+  const approvalBlocker = notice?.needsNewPreview
+    ? 'This preview is out of date. Prepare a new one to continue.'
+    : pendingIndex !== null
+      ? 'Updating the preview. Approval is paused until the new version arrives.'
+      : reviewFailure
+        ? 'The last review change failed. Resolve it above before approving.'
+        : null
   const showDraft = preview && preview.status !== 'blocked' && preview.outbound_payload
   const receiptDatasetName = receipt
     ? datasets.find((dataset) => dataset.dataset_id === receipt.dataset_id)?.display_name ?? null
@@ -147,7 +211,11 @@ export default function App() {
               editable={!draftLocked}
               outcome={receipt ? (receipt.status === 'sent' ? 'sent' : receipt.status === 'send_failed' ? 'unconfirmed' : 'not_sent') : notice?.needsNewPreview ? 'not_sent' : 'draft'}
               busy={busy}
+              pendingIndex={pendingIndex}
+              failure={reviewFailure}
+              knownRedactions={known?.requestId === preview.request_id ? known.byIndex : {}}
               onToggle={toggleHidden}
+              onDismissFailure={() => setReviewFailure(null)}
             />
             <div className="side">
               {receipt ? (
@@ -155,10 +223,11 @@ export default function App() {
               ) : (
                 <ApprovalPanel
                   preview={preview}
-                  confirmed={confirmed}
+                  confirmed={approvedKey === approvalKey(preview)}
                   busy={busy}
-                  disabledReason={notice?.needsNewPreview ? 'This preview is out of date. Prepare a new one to continue.' : null}
-                  onConfirm={setConfirmed}
+                  disabledReason={approvalBlocker}
+                  lastChange={lastChange}
+                  onConfirm={(v) => setApprovedKey(v ? approvalKey(preview) : null)}
                   onSend={sendNow}
                 />
               )}
