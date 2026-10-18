@@ -9,6 +9,7 @@ import { HIDDEN_MARKER, countPlaceholders, placeholderTypes, toggleIndex } from 
 import { OutcomePanel } from './components/OutcomePanel'
 import { EvidenceDashboard } from './components/EvidenceDashboard'
 import { ReceiptTimeline } from './components/ReceiptTimeline'
+import { PolicyExplanation } from './components/PolicyExplanation'
 
 interface Session { token: string; account: Account }
 type View = 'app' | 'evidence' | 'history'
@@ -227,6 +228,8 @@ export default function App() {
         ? 'The last review change failed. Resolve it above before approving.'
         : null
   const showDraft = preview && preview.status !== 'blocked' && preview.outbound_payload
+  // Existing owner passport of the previewed dataset; null if it is no longer visible (e.g. revoked).
+  const previewPassport = preview ? datasets.find((d) => d.dataset_id === preview.dataset_id)?.passport ?? null : null
   const receiptDatasetName = receipt
     ? datasets.find((dataset) => dataset.dataset_id === receipt.dataset_id)?.display_name ?? null
     : null
@@ -275,6 +278,7 @@ export default function App() {
           <>
             <ManifestReview
               preview={preview}
+              passport={previewPassport}
               editable={!draftLocked}
               outcome={receipt ? (receipt.status === 'sent' ? 'sent' : receipt.status === 'send_failed' ? 'unconfirmed' : 'not_sent') : notice?.needsNewPreview ? 'not_sent' : 'draft'}
               busy={busy}
@@ -305,7 +309,12 @@ export default function App() {
             </div>
           </>
         ) : receipt ? (
-          <div className="side side-wide"><OutcomePanel receipt={receipt} sendResult={null} datasetName={receiptDatasetName} onStartOver={resetRequest} /></div>
+          <div className="side side-wide">
+            {preview?.status === 'blocked' && (
+              <div className="step blocked-explain"><PolicyExplanation preview={preview} passport={previewPassport} /></div>
+            )}
+            <OutcomePanel receipt={receipt} sendResult={null} datasetName={receiptDatasetName} onStartOver={resetRequest} />
+          </div>
         ) : (
           <section className="placeholder">
             <p>Choose a feedback source, what you want to do and where the approved content should go.</p>

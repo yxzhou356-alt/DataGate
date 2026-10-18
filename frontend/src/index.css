@@ -158,11 +158,6 @@ select {
 .summary-block { background: var(--paper); border-radius: 6px; padding: 0.75rem 0.85rem; display: grid; gap: 0.4rem; align-content: start; }
 .summary-title { font-size: 0.9375rem; }
 .summary-help { color: var(--muted); font-size: 0.8125rem; max-width: 72ch; }
-.field-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.field-chip {
-  font-size: 0.8125rem; border: 1px dashed var(--muted); border-radius: 3px; padding: 0.05rem 0.45rem;
-  color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px;
-}
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; font-size: 0.8125rem; }
 .compat-note { display: block; color: var(--warn); margin-bottom: 0.25rem; }
 .legend-text { color: var(--ink); flex: 1 1 14rem; }
@@ -386,3 +381,31 @@ a.btn { text-decoration: none; display: inline-block; }
 .entry-redactions { font-size: 0.8125rem; color: var(--muted); }
 .entry-reasons { margin: 0; padding-left: 1.1rem; font-size: 0.8125rem; }
 .timeline-more { display: flex; justify-content: center; min-height: 2.5rem; align-items: center; color: var(--muted); font-size: 0.875rem; }
+
+/* ---------- policy explanation ---------- */
+.review-summary > .policy-explain { grid-column: 1 / -1; }
+.policy-explain { display: grid; gap: 0.5rem; min-width: 0; }
+.policy-explain-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.policy-explain-head .decision { font-size: 0.8125rem; font-weight: 600; }
+.policy-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; table-layout: fixed; }
+.policy-table th, .policy-table td {
+  text-align: left; vertical-align: top; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--line);
+  overflow-wrap: break-word; /* whole words; only unbreakable strings are split */
+}
+.policy-table thead th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 2px solid var(--line); }
+.policy-table thead th:nth-child(1) { width: 34%; }
+.policy-table thead th:nth-child(2) { width: 26%; }
+.policy-table tbody th { font-weight: 600; }
+.rule-result { display: inline-block; font-weight: 600; border-radius: 3px; padding: 0 0.35rem; border: 1px solid currentColor; white-space: normal; }
+.rule-included { color: var(--ok); }
+.rule-removed { color: var(--muted); border-style: dashed; }
+.rule-redacted { color: var(--paper); background: var(--bar); border-color: var(--bar); }
+.rule-checked { color: var(--ink); }
+.rule-unchecked { color: var(--warn); border-style: dashed; }
+.policy-reasons { margin: 0; padding-left: 1.1rem; font-size: 0.875rem; }
+.blocked-explain { margin-bottom: 1rem; }
+@media (max-width: 520px) {
+  .policy-table th, .policy-table td { padding: 0.4rem 0.3rem; }
+  .policy-table thead th:nth-child(1) { width: 32%; }
+  .policy-table thead th:nth-child(2) { width: 28%; }
+}

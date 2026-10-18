@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { CustomRedaction, PreviewResponse } from '../types'
-import { redactionCountLabel, redactionLabel, redactionShortLabel, sourceFieldLabel } from '../labels'
+import type { CustomRedaction, Passport, PreviewResponse } from '../types'
+import { redactionCountLabel, redactionLabel, redactionShortLabel } from '../labels'
+import { PolicyExplanation } from './PolicyExplanation'
 import {
   HIDDEN_MARKER, buildReviewSegments, countPlaceholders, cpToUnit, placeholderTypes, renderSegments, segmentMessage, snapSelection,
   type CpSpan, type ReviewSegment,
@@ -20,6 +21,8 @@ export interface ReviewFailure {
 
 interface Props {
   preview: PreviewResponse
+  /** Owner passport of the previewed dataset (null if no longer visible), for the explanation table. */
+  passport: Passport | null
   editable: boolean
   /** Failed delivery is uncertain and must not be described as zero dispatch. */
   outcome: 'draft' | 'sent' | 'not_sent' | 'unconfirmed'
@@ -137,7 +140,7 @@ function excerpt(text: string): string {
 }
 
 export function ManifestReview({
-  preview, editable, outcome, busy, pendingIndex, failure, knownRedactions, baseTexts,
+  preview, passport, editable, outcome, busy, pendingIndex, failure, knownRedactions, baseTexts,
   onToggle, onAddCustom, onRemoveCustom, onRetryFailure, onDismissFailure,
 }: Props) {
   const [rawSelection, setRawSelection] = useState<RawSelection | null>(null)
@@ -171,7 +174,6 @@ export function ManifestReview({
   const payload = preview.outbound_payload
   if (!payload) return null
   const types = placeholderTypes(Object.keys(preview.redaction_counts))
-  const redactions = Object.entries(preview.redaction_counts).filter(([, n]) => n > 0)
   const total = payload.messages.length
   const visible = payload.messages.filter((m) => m !== HIDDEN_MARKER).length
   // A backend that predates custom redactions omits this field; partial redaction is then unavailable.
@@ -188,20 +190,9 @@ export function ManifestReview({
       <h2 id="step-review" className="step-title"><span className="step-no">2</span>Review exactly what leaves</h2>
 
       <div className="review-summary">
+        <PolicyExplanation preview={preview} passport={passport} />
         <div className="summary-block">
-          <h3 className="summary-title">Columns removed entirely</h3>
-          <p className="summary-help">These columns are dropped before review. None of their values are shown here or sent.</p>
-          <ul className="field-chips" aria-label="Columns removed entirely">
-            {preview.dropped_fields.map((f) => <li key={f} className="field-chip">{sourceFieldLabel(f)}</li>)}
-          </ul>
-        </div>
-        <div className="summary-block">
-          <h3 className="summary-title">Replaced inside messages</h3>
-          <p className="summary-help">
-            {redactions.length === 0
-              ? 'Nothing that the owner rules cover was found in the messages.'
-              : `${listText(redactions.map(([t, n]) => redactionCountLabel(t, n)))} replaced across all messages.`}
-          </p>
+          <h3 className="summary-title">Markers in the messages</h3>
           <p className="legend">
             {(types.length ? types : ['EMAIL']).map((t) => <RedactionMarker key={t} type={t} />)}
             <span className="lock-note"><span className="lock" aria-hidden="true" />Required by owner policy. Locked; cannot be undone here.</span>
