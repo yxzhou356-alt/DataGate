@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-10-18T05:19:17.213240+00:00",
+  "generated_at": "2026-10-18T05:46:28.184282+00:00",
   "revision": {
-    "commit": "21f5abcb69a5962c84335559bf723f18b74e6b17",
+    "commit": "9a01f94b82e1ab9b52e5c6de215b3f6d6a4c6578",
     "dirty": true
   },
   "split": "heldout",
   "example_count": 40,
   "implementation_hashes": {
     "detector": "40cf9b700f60d8363e001c1d58e0adb258a93a7359206dcd434b185f63f702e5",
-    "rules": "c07a5311ce508d2e2e6c0ee07076486ced3bc6c081a32f4b4c3303781ce2de56",
+    "rules": "1796c8ae9c8835d8a4e693bd80117b2d9c6f4dbdac1da8bbe5671427d7edea6e",
     "evaluator": "57e41207f857e79de81120a86b5b0640a76b8af1fc4400f823e4a69a95f830ef"
   },
   "corpus_sha256": "24b2f9e0beab070874872b1c72c1c24f283eb578a5b3c7c45913ba6ffeb1d5b3",

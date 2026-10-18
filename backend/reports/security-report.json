@@ -1,14 +1,14 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-18T05:44:17.738481+00:00",
-  "source_revision": "21f5abcb69a5962c84335559bf723f18b74e6b17",
-  "working_tree_dirty": true,
-  "source_fingerprint": "2d2a805e5b5fbec8cd65793b0e96b9dd8fd168d8c13af482894a43c6309a01be",
+  "generated_at": "2026-10-18T05:46:27.724314+00:00",
+  "source_revision": "9a01f94b82e1ab9b52e5c6de215b3f6d6a4c6578",
+  "working_tree_dirty": false,
+  "source_fingerprint": "ffe7a38876418a56b3b53ac5d28b2977ac9800001de18ac79b82db52828d7453",
   "total": 87,
   "passed": 87,
   "failed": 0,
   "skipped": 0,
-  "duration_seconds": 2.956,
+  "duration_seconds": 2.63,
   "receiver_mode": "local_demo",
   "controls": [
     {
@@ -122,82 +122,82 @@
     {
       "id": "tests.test_detection::test_missing_model_evaluation_has_no_fake_hybrid_metrics#1",
       "status": "passed",
-      "duration_seconds": 0.03
+      "duration_seconds": 0.021
     },
     {
       "id": "tests.test_detection::test_installed_pretrained_model_produces_real_person_findings#1",
       "status": "passed",
-      "duration_seconds": 0.532
+      "duration_seconds": 0.473
     },
     {
       "id": "tests.test_extensions::test_raw_view_requires_separate_grant_and_never_exposes_dropped_columns#1",
       "status": "passed",
-      "duration_seconds": 0.031
+      "duration_seconds": 0.025
     },
     {
       "id": "tests.test_extensions::test_raw_grant_changes_invalidate_approval_without_revoking_processing#1",
       "status": "passed",
-      "duration_seconds": 0.025
+      "duration_seconds": 0.019
     },
     {
       "id": "tests.test_extensions::test_unicode_manual_span_is_applied_without_restoring_locked_entities#1",
       "status": "passed",
-      "duration_seconds": 0.023
+      "duration_seconds": 0.02
     },
     {
       "id": "tests.test_extensions::test_invalid_manual_span_cannot_mutate_review#1",
       "status": "passed",
-      "duration_seconds": 0.018
+      "duration_seconds": 0.016
     },
     {
       "id": "tests.test_extensions::test_invalid_manual_span_cannot_mutate_review#2",
       "status": "passed",
-      "duration_seconds": 0.021
+      "duration_seconds": 0.017
     },
     {
       "id": "tests.test_extensions::test_invalid_manual_span_cannot_mutate_review#3",
       "status": "passed",
-      "duration_seconds": 0.021
+      "duration_seconds": 0.02
     },
     {
       "id": "tests.test_extensions::test_invalid_manual_span_cannot_mutate_review#4",
       "status": "passed",
-      "duration_seconds": 0.02
+      "duration_seconds": 0.017
     },
     {
       "id": "tests.test_extensions::test_invalid_manual_span_cannot_mutate_review#5",
       "status": "passed",
-      "duration_seconds": 0.022
+      "duration_seconds": 0.017
     },
     {
       "id": "tests.test_extensions::test_invalid_manual_span_cannot_mutate_review#6",
       "status": "passed",
-      "duration_seconds": 0.018
+      "duration_seconds": 0.016
     },
     {
       "id": "tests.test_extensions::test_invalid_manual_span_cannot_mutate_review#7",
       "status": "passed",
-      "duration_seconds": 0.019
+      "duration_seconds": 0.015
     },
     {
       "id": "tests.test_extensions::test_stale_preview_hash_and_cross_source_span_are_rejected#1",
       "status": "passed",
-      "duration_seconds": 0.017
+      "duration_seconds": 0.015
     },
     {
       "id": "tests.test_extensions::test_person_pseudonyms_are_consistent_and_survive_additional_hiding#1",
       "status": "passed",
-      "duration_seconds": 0.023
+      "duration_seconds": 0.019
     },
     {
       "id": "tests.test_extensions::test_detector_fingerprint_change_invalidates_reviewed_dispatch#1",
       "status": "passed",
-      "duration_seconds": 0.016
+      "duration_seconds": 0.013
     },
     {
       "id": "tests.test_extensions::test_revocation_during_send_payload_rebuild_is_rechecked_before_dispatch#1",
       "status": "passed",
-      "duration_seconds": 0.018
+      "duration_seconds": 0.015
     },
     {
       "id": "tests.test_extensions::test_required_person_detector_unavailability_never_becomes_empty_success#1",
@@ -207,147 +207,147 @@
     {
       "id": "tests.test_extensions::test_person_inference_failure_blocks_review_or_send_with_a_receipt#1",
       "status": "passed",
-      "duration_seconds": 0.017
+      "duration_seconds": 0.014
     },
     {
       "id": "tests.test_extensions::test_person_inference_failure_blocks_review_or_send_with_a_receipt#2",
       "status": "passed",
-      "duration_seconds": 0.017
+      "duration_seconds": 0.014
     },
     {
       "id": "tests.test_extensions::test_overlapping_person_and_email_spans_do_not_leak_person_prefix#1",
       "status": "passed",
-      "duration_seconds": 0.018
+      "duration_seconds": 0.016
     },
     {
       "id": "tests.test_extensions::test_unsupported_required_detector_fails_closed#1",
       "status": "passed",
-      "duration_seconds": 0.013
+      "duration_seconds": 0.011
     },
     {
       "id": "tests.test_extensions::test_unknown_configured_operation_is_denied_instead_of_server_error#1",
       "status": "passed",
-      "duration_seconds": 0.013
+      "duration_seconds": 0.01
     },
     {
       "id": "tests.test_extensions::test_unterminated_csv_quote_is_a_validation_failure#1",
       "status": "passed",
-      "duration_seconds": 0.01
+      "duration_seconds": 0.008
     },
     {
       "id": "tests.test_extensions::test_history_timeline_and_export_are_metadata_only_and_creator_scoped#1",
       "status": "passed",
-      "duration_seconds": 0.032
+      "duration_seconds": 0.031
     },
     {
       "id": "tests.test_extensions::test_owner_revocation_is_logged_without_an_analyst_impersonation#1",
       "status": "passed",
-      "duration_seconds": 0.017
+      "duration_seconds": 0.015
     },
     {
       "id": "tests.test_extensions::test_new_global_views_require_authentication#1",
       "status": "passed",
-      "duration_seconds": 0.007
+      "duration_seconds": 0.006
     },
     {
       "id": "tests.test_extensions::test_new_global_views_require_authentication#2",
       "status": "passed",
-      "duration_seconds": 0.007
+      "duration_seconds": 0.006
     },
     {
       "id": "tests.test_extensions::test_security_report_missing_does_not_run_tests_or_mutate_live_requests#1",
       "status": "passed",
-      "duration_seconds": 0.017
+      "duration_seconds": 0.016
     },
     {
       "id": "tests.test_extensions::test_security_report_reads_saved_fixture_and_marks_staleness#1",
       "status": "passed",
-      "duration_seconds": 0.008
+      "duration_seconds": 0.007
     },
     {
       "id": "tests.test_extensions::test_security_report_reads_saved_fixture_and_marks_staleness#2",
       "status": "passed",
-      "duration_seconds": 0.028
+      "duration_seconds": 0.024
     },
     {
       "id": "tests.test_flow::test_allowed_request_reaches_receiver_exactly_once_with_previewed_bytes#1",
       "status": "passed",
-      "duration_seconds": 0.062
+      "duration_seconds": 0.053
     },
     {
       "id": "tests.test_flow::test_clean_dataset_is_allow_but_still_needs_approval#1",
       "status": "passed",
-      "duration_seconds": 0.014
+      "duration_seconds": 0.012
     },
     {
       "id": "tests.test_flow::test_dataset_listing_is_scoped_to_account#1",
       "status": "passed",
-      "duration_seconds": 0.013
+      "duration_seconds": 0.01
     },
     {
       "id": "tests.test_flow::test_auth_required_and_invalid_session#1",
       "status": "passed",
-      "duration_seconds": 0.009
+      "duration_seconds": 0.008
     },
     {
       "id": "tests.test_flow::test_identity_comes_from_token_not_body#1",
       "status": "passed",
-      "duration_seconds": 0.009
+      "duration_seconds": 0.008
     },
     {
       "id": "tests.test_flow::test_cross_account_dataset_draft_review_receipt_are_denied#1",
       "status": "passed",
-      "duration_seconds": 0.065
+      "duration_seconds": 0.057
     },
     {
       "id": "tests.test_flow::test_unknown_dataset_and_request#1",
       "status": "passed",
-      "duration_seconds": 0.012
+      "duration_seconds": 0.009
     },
     {
       "id": "tests.test_flow::test_model_training_purpose_is_blocked_with_zero_calls#1",
       "status": "passed",
-      "duration_seconds": 0.012
+      "duration_seconds": 0.011
     },
     {
       "id": "tests.test_flow::test_unapproved_destination_is_blocked_with_zero_calls#1",
       "status": "passed",
-      "duration_seconds": 0.013
+      "duration_seconds": 0.01
     },
     {
       "id": "tests.test_flow::test_destination_url_is_rejected#1",
       "status": "passed",
-      "duration_seconds": 0.01
+      "duration_seconds": 0.007
     },
     {
       "id": "tests.test_flow::test_sharing_none_blocks_even_redacted_data#1",
       "status": "passed",
-      "duration_seconds": 0.014
+      "duration_seconds": 0.011
     },
     {
       "id": "tests.test_flow::test_invalid_source_returns_422_without_echoing_values#1",
       "status": "passed",
-      "duration_seconds": 0.009
+      "duration_seconds": 0.008
     },
     {
       "id": "tests.test_flow::test_unexpected_columns_are_never_forwarded#1",
       "status": "passed",
-      "duration_seconds": 0.023
+      "duration_seconds": 0.019
     },
     {
       "id": "tests.test_send_safety::test_mandatory_redaction_cannot_be_undone_by_body_tampering#1",
       "status": "passed",
-      "duration_seconds": 0.065
+      "duration_seconds": 0.057
     },
     {
       "id": "tests.test_send_safety::test_revocation_after_preview_blocks_send_with_zero_calls#1",
       "status": "passed",
-      "duration_seconds": 0.087
+      "duration_seconds": 0.083
     },
     {
       "id": "tests.test_send_safety::test_revocation_also_blocks_review#1",
       "status": "passed",
-      "duration_seconds": 0.034
+      "duration_seconds": 0.032
     },
     {
       "id": "tests.test_send_safety::test_policy_turning_to_no_sharing_after_preview_blocks_send#1",
@@ -357,12 +357,12 @@
     {
       "id": "tests.test_send_safety::test_changed_source_invalidates_approval#1",
       "status": "passed",
-      "duration_seconds": 0.06
+      "duration_seconds": 0.058
     },
     {
       "id": "tests.test_send_safety::test_out_of_band_source_edit_without_revision_bump_is_detected#1",
       "status": "passed",
-      "duration_seconds": 0.032
+      "duration_seconds": 0.033
     },
     {
       "id": "tests.test_send_safety::test_changed_policy_version_invalidates_approval#1",
@@ -372,37 +372,37 @@
     {
       "id": "tests.test_send_safety::test_out_of_band_policy_edit_detected_by_fingerprint#1",
       "status": "passed",
-      "duration_seconds": 0.032
+      "duration_seconds": 0.031
     },
     {
       "id": "tests.test_send_safety::test_review_hides_messages_and_invalidates_previous_approval#1",
       "status": "passed",
-      "duration_seconds": 0.08
+      "duration_seconds": 0.078
     },
     {
       "id": "tests.test_send_safety::test_review_validation#1",
       "status": "passed",
-      "duration_seconds": 0.061
+      "duration_seconds": 0.059
     },
     {
       "id": "tests.test_send_safety::test_duplicate_send_does_not_invoke_twice#1",
       "status": "passed",
-      "duration_seconds": 0.057
+      "duration_seconds": 0.054
     },
     {
       "id": "tests.test_send_safety::test_concurrent_sends_invoke_receiver_once#1",
       "status": "passed",
-      "duration_seconds": 0.357
+      "duration_seconds": 0.353
     },
     {
       "id": "tests.test_send_safety::test_receiver_failure_is_reported_honestly#1",
       "status": "passed",
-      "duration_seconds": 0.087
+      "duration_seconds": 0.08
     },
     {
       "id": "tests.test_send_safety::test_receipt_is_metadata_only_and_creator_only#1",
       "status": "passed",
-      "duration_seconds": 0.059
+      "duration_seconds": 0.057
     },
     {
       "id": "tests.test_transform::test_redaction_patterns#1",
