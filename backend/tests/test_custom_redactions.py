@@ -87,7 +87,7 @@ def test_invalid_spans_are_rejected_and_leave_review_unchanged(client, a):
     rid = p["request_id"]
     n = len(p["outbound_payload"]["messages"][1])
     for bad in (
-        {"message_index": 10, "start": 0, "end": 1},
+        {"message_index": len(p["outbound_payload"]["messages"]), "start": 0, "end": 1},
         {"message_index": -1, "start": 0, "end": 1},
         {"message_index": 1, "start": -1, "end": 2},
         {"message_index": 1, "start": 3, "end": 3},
@@ -135,11 +135,12 @@ def test_hidden_message_spans_are_not_counted_in_receipt(client, a):
 def test_fully_redacting_every_remaining_message_is_no_content(client, a):
     p = preview(client, a).json()
     rid, msgs = p["request_id"], p["outbound_payload"]["messages"]
-    whole = [{"message_index": 9, "start": 0, "end": len(msgs[9])}]
-    r = _review(client, a, rid, 1, hide=list(range(9)), custom=whole)
+    last_index = len(msgs) - 1
+    whole = [{"message_index": last_index, "start": 0, "end": len(msgs[last_index])}]
+    r = _review(client, a, rid, 1, hide=list(range(last_index)), custom=whole)
     assert r.status_code == 422 and r.json()["error"]["code"] == "NO_CONTENT_TO_SEND"
     # A fully redacted message is fine while another message still has content.
-    r = _review(client, a, rid, 1, hide=list(range(8)), custom=whole)
+    r = _review(client, a, rid, 1, hide=list(range(last_index - 1)), custom=whole)
     assert r.status_code == 200 and r.json()["review_revision"] == 2
 
 

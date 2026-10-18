@@ -22,14 +22,14 @@ def test_allowed_request_reaches_receiver_exactly_once_with_previewed_bytes(clie
     assert p["status"] == "ready" and p["decision"] == "redact"
     assert p["reason_codes"] == ["REDACTION_REQUIRED"]
     assert p["dropped_fields"] == ["ticket_id", "customer_name", "email", "phone", "plan_tier", "account_value", "product_area"]
-    assert p["redaction_counts"] == {"EMAIL": 2, "PHONE": 2}
+    assert p["redaction_counts"] == {"EMAIL": 3, "PHONE": 3}
     assert p["receiver_attempts"] == 0 and receiver.invocations == []
 
     payload = p["outbound_payload"]
     assert set(payload) == {"schema_version", "purpose", "instruction", "messages"}
-    assert len(payload["messages"]) == 10
-    assert payload["messages"][0] == "The reset link expired. Please contact [EMAIL]."
-    assert payload["messages"][9] == "The upgrade button does nothing; text me at [PHONE]."
+    assert len(payload["messages"]) == 18
+    assert payload["messages"][0] == "Great layout, but the reset link expired. Please contact [EMAIL]."
+    assert payload["messages"][9] == "The app was worth it until upgrades broke; text me at [PHONE]."
     # Unicode survives untouched.
     assert "La app se cierra al abrir el panel — crashes" in payload["messages"][4]
 
@@ -41,7 +41,7 @@ def test_allowed_request_reaches_receiver_exactly_once_with_previewed_bytes(clie
     body = r.json()
     assert body["status"] == "sent" and body["receiver_attempts"] == 1
     assert body["receiver_result"] == {
-        "mode": "local_demo", "acknowledged": True, "message_count": 10,
+        "mode": "local_demo", "acknowledged": True, "message_count": 18,
         "note": "Local test receiver; no external AI model was called.",
     }
 

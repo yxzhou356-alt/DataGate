@@ -21,6 +21,8 @@ Current bounded task: requested by the human in this chat, implemented by Codex 
 
 A human must claim ownership. Earlier suggested named assignments are not binding. Update this table after real progress, not in anticipation.
 
+Oct 18 data task (explicit current human request / Codex, `feature` at base `418ec0e`): both fixtures have 18 customer reviews containing PII-like details. All message texts now express product/service opinions and customer pain points, rather than support requests or bare identifiers. Related PII categories are combined, conspicuous test labels are absent and the unwanted category remains removed. Ticket IDs and non-message columns, schema, detector/policy behavior, grants and receipts are unchanged. Runtime MapleCo has 19 reviews/revision 5 (the prior extra named row is also rewritten as a review); RiverCo has 18/revision 4. Chrome verified all review bodies fit within three text lines at desktop and 390px widths, with no horizontal overflow. No UI Send was performed. Checks: 176 backend tests passed in 2.56s; frontend build passed. Status: REVIEW, uncommitted. See [fixture coverage and handoff](backend/fixtures/README.md). Other ownership/acceptance is unchanged.
+
 ## 2. Phase A — one assistant builds the baseline
 
 1. The group picks one member and their coding assistant as baseline owner.

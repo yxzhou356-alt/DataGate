@@ -256,6 +256,8 @@ def test_older_policy_table_gains_person_style(tmp_path):
 
 
 def test_owner_cli_can_add_person_but_never_drop_email_or_phone(client, a, settings, monkeypatch):
+    # Isolate this CLI/numbering check from names already present in demo fixtures.
+    write_source(settings, ["The export is slow."])
     monkeypatch.setenv("DATAGATE_DATA_DIR", str(settings.data_dir))
     with pytest.raises(SystemExit):
         demo_control.main(["redactions", "--dataset", "feedback_a", "--types", "EMAIL,PERSON"])

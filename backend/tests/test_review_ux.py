@@ -1,5 +1,6 @@
-"""Review behaviour the interactive review cards rely on: hide/restore round-trips,
-index normalisation, and no raw identifiers in any review response."""
+"""Review behaviour: hide/restore, index normalisation and mandatory identifiers.
+The default policy covers EMAIL/PHONE, not every PII category in the demo data.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +22,9 @@ def _review(client, headers, rid, rev, hide):
 def _raw_identifiers() -> list[str]:
     with FIXTURE_A.open(newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
-    return [r[c] for r in rows for c in ("customer_name", "email", "phone", "account_value") if r[c]]
+    # New messages intentionally contain synthetic names and unsupported PII for
+    # manual review. Check the identifiers the default policy actually redacts.
+    return [r[c] for r in rows for c in ("email", "phone") if r[c]]
 
 
 def test_hide_then_restore_returns_server_redacted_version(client, a):
@@ -49,7 +52,7 @@ def test_duplicate_and_unsorted_indices_are_normalised(client, a):
     assert r.json()["review_revision"] == 2
 
 
-def test_review_responses_and_errors_never_contain_raw_identifiers(client, a):
+def test_review_responses_and_errors_never_contain_mandatory_raw_identifiers(client, a):
     raw = _raw_identifiers()
     p = preview(client, a)
     rid = p.json()["request_id"]
@@ -57,12 +60,18 @@ def test_review_responses_and_errors_never_contain_raw_identifiers(client, a):
         p,
         _review(client, a, rid, 1, [2]),
         _review(client, a, rid, 2, []),
-        _review(client, a, rid, 3, list(range(10))),  # NO_CONTENT_TO_SEND
+        _review(client, a, rid, 3, list(range(len(p.json()["outbound_payload"]["messages"])))),  # NO_CONTENT_TO_SEND
         _review(client, a, rid, 1, [0]),              # stale revision
     ]
     assert responses[3].json()["error"]["code"] == "NO_CONTENT_TO_SEND"
     assert responses[4].json()["error"]["code"] == "REVIEW_CHANGED"
     for r in responses:
+        if r.status_code == 200:
+            payload = r.json()["outbound_payload"]
+            # Source metadata columns must still be excluded, even when a
+            # message itself intentionally mentions a synthetic person.
+            assert set(payload) == {"schema_version", "purpose", "instruction", "messages"}
+            assert all(isinstance(message, str) for message in payload["messages"])
         for value in raw:
             assert value not in r.text
 

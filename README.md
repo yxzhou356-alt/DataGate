@@ -74,7 +74,7 @@ Tests use a fresh temporary DB and source copies per test. They never touch `bac
 
 ### Person names: local detection and numbered pseudonyms
 
-An owner can require `PERSON` redaction. The default policies do not, and the committed fixtures contain no names. Demo setup:
+An owner can require `PERSON` redaction. The default policies do not. Both committed fixtures now include a synthetic names example and other [PII-oriented demo messages](backend/fixtures/README.md). Demo setup:
 
 ```bash
 cd backend
@@ -82,7 +82,7 @@ cd backend
 .venv/bin/python -m app.demo_control add-named-row --dataset feedback_a   # appends one synthetic row that mentions people
 ```
 
-The next preview turns `Ana asked Liam O'Brien … Liam O'Brien said Ana should email ana.souza@example.com; Dr. Patel will follow up with Ana.` into `[PERSON_1] asked [PERSON_2] … [PERSON_2] said [PERSON_1] should email [EMAIL]; Dr. [PERSON_3] will follow up with [PERSON_1].` Use `--person-style generic` for plain `[PERSON]`. The CLI refuses to drop EMAIL or PHONE.
+The next preview replaces names in the appended conversation with `[PERSON_n]` and the email with `[EMAIL]`. Repeated identical names keep their number; the actual numbers depend on all earlier names in the dataset. Use `--person-style generic` for plain `[PERSON]`. The CLI refuses to drop EMAIL or PHONE.
 
 How it works:
 - **Detector:** `app/detectors.py`, local only, no new dependency. A versioned lexicon-and-context detector: committed given-name list (`app/data/person_given_names.txt`), honorifics, surname extension, organization guard. It sits behind a `PersonDetector` interface (typed spans with code-point offsets and confidence), so a pretrained local NER model can replace it later as a coordinated dependency change.
@@ -155,7 +155,8 @@ Keep a third terminal in `backend/` with the venv active for the owner controls.
 1. **Choose.** Open the UI and pick *MapleCo analyst*. Only MapleCo feedback is listed, with its owner rules.
 2. **Review.** Click *Prepare preview*.
    - Seven columns are removed.
-   - Two emails and two phone numbers inside messages are shown as solid redaction bars.
+   - A fresh MapleCo fixture has 18 messages, with three emails and three phone numbers replaced. Existing runtime additions may increase those counts.
+   - Each message is a short customer review combining product/service opinions with contact, identity, payment or network details. Review and manually redact/hide unsupported PII; the presence of these examples does not mean all PII is automatically removed.
    - Note the payload hash.
 3. **Hide.** Each message is a review card showing its position, outbound text, locked owner-policy redactions and include/hide state. Click *Hide from send* on one card. The review revision goes from 1 to 2, and *Technical verification details* shows the new fingerprint plus the previous one, which is no longer approvable. *Restore redacted version* brings back only the server's redacted text.
    - **Redact part of a message.** Select words in any card (e.g. "charged twice") and choose *Redact selection*. The words become a hatched "you" marker, which you can click to undo. Selecting into an `[EMAIL]` marker expands to cover all of it. The receipt counts these as *Text redacted by you*.
@@ -200,7 +201,7 @@ backend/
     schemas.py       Request bodies (extra fields rejected)
     main.py          create_app(): routes only, thin layer over Workflow
     demo_control.py  Owner CLI: revoke, grant, sharing, bump-policy, edit-source, status
-  fixtures/          Two synthetic 10-row CSVs (committed, never mutated)
+  fixtures/          Two synthetic 18-row CSVs + PII coverage README (runtime copies are separate)
   tests/             test_flow.py, test_send_safety.py, test_transform.py, test_review_ux.py,
                      test_custom_redactions.py, test_evidence.py, test_receipt_timeline.py,
                      conftest.py (isolation guard, scenario marker)
@@ -236,7 +237,7 @@ Where later layers plug in (see the backlog in TEAM_WORKFLOW.md):
 ## Known limits
 
 - Demo sign-in is simulated authentication, not production login. Anyone running the app can pick either account.
-- Detection covers emails and North-American 10-digit phone formats, plus person names when an owner requires PERSON. The name detector is lexicon-based: see its measured limits above. Addresses, health details and other secrets inside messages are **not** detected. The committed fixture messages contain no names; `add-named-row` appends synthetic ones for demos.
+- Detection covers emails and North-American 10-digit phone formats, plus person names when an owner requires PERSON. The name detector is lexicon-based: see its measured limits above. The [PII fixtures](backend/fixtures/README.md) include names, addresses, SSN-shaped values, other government identifiers, card and bank numbers, DOB and network IDs. These additions do not implement detectors for those other categories.
 - CSV validation currently accepts an unclosed quoted field and may merge later records. This needs a bounded backend fix before claiming the no-silent-repair requirement is fully met; see B1 in [the review](BASELINE_UX_REVIEW.md).
 - Analyst approval is not customer consent. Receipts and hashes are evidence of this gateway's actions, not proof of privacy or recipient behavior.
 - Revocation applies at the next protected step. It cannot recall content already sent, and it isn't distributed or atomic across services.

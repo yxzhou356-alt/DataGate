@@ -1,11 +1,19 @@
 ticket_id,customer_name,email,phone,plan_tier,account_value,product_area,message
-MA-1001,Emma Lawson,emma.lawson@example.com,(213) 555-0142,pro,4200,login,The reset link expired. Please contact emma.lawson@example.com.
-MA-1002,Noah Patel,noah.p@example.org,213-555-0177,basic,300,billing,"I was charged twice this month, and the refund hasn't shown up yet."
-MA-1003,Olivia Chen,olivia.chen@example.net,+1 310 555 0199,enterprise,58000,reports,Exported reports are missing the last week of data.
-MA-1004,Liam O'Brien,liam.obrien@example.com,424.555.0110,pro,3900,login,Two-factor codes arrive late. Call me at 424-555-0110 if you need logs.
-MA-1005,Sofía Ramírez,sofia.r@example.com,(323) 555-0163,basic,250,mobile,"La app se cierra al abrir el panel — crashes every time on Android 15."
-MA-1006,Ethan Brooks,ethan.brooks@example.com,213 555 0188,pro,4100,billing,Invoice PDF shows the wrong company address.
-MA-1007,Ava Kim,ava.kim@example.org,(626) 555-0124,enterprise,61000,reports,"Dashboard charts load slowly, often over 30 seconds."
-MA-1008,Mason Reed,mason.reed@example.com,818-555-0135,basic,180,login,"Password reset email never arrived; try my backup, mason.backup@example.net."
-MA-1009,Isabella Rossi,isabella.rossi@example.com,(714) 555-0191,pro,3600,mobile,Push notifications stopped after the last update.
-MA-1010,Lucas Meyer,lucas.meyer@example.com,562.555.0157,pro,3800,billing,"The upgrade button does nothing; text me at (562) 555-0157."
+MA-1001,Emma Lawson,emma.lawson@example.com,(213) 555-0142,pro,4200,login,"Great layout, but the reset link expired. Please contact emma.lawson@example.com."
+MA-1002,Noah Patel,noah.p@example.org,213-555-0177,basic,300,billing,"Good features, but I was charged twice and the refund is late. I'm Noah Patel."
+MA-1003,Olivia Chen,olivia.chen@example.net,+1 310 555 0199,enterprise,58000,reports,"Love the charts, but reports miss last week of data. I'm Olivia Chen."
+MA-1004,Liam O'Brien,liam.obrien@example.com,424.555.0110,pro,3900,login,"Good security, slow codes. Call 424-555-0110; I keep getting locked out."
+MA-1005,Sofía Ramírez,sofia.r@example.com,(323) 555-0163,basic,250,mobile,La app se cierra al abrir el panel — crashes daily. I'm Sofía Ramírez.
+MA-1006,Ethan Brooks,ethan.brooks@example.com,213 555 0188,pro,4100,billing,"Good price, but invoices show the wrong address: 28 Cedar Road, Irvine CA 92602."
+MA-1007,Ava Kim,ava.kim@example.org,(626) 555-0124,enterprise,61000,reports,"Great charts, painfully slow loading. I'm Ava Kim; pages take over 30 seconds."
+MA-1008,Mason Reed,mason.reed@example.com,818-555-0135,basic,180,login,"I like the app, but reset emails never arrive. Try mason.backup@example.net."
+MA-1009,Isabella Rossi,isabella.rossi@example.com,(714) 555-0191,pro,3600,mobile,Used to love the mobile app; notifications broke after the update. Isabella Rossi.
+MA-1010,Lucas Meyer,lucas.meyer@example.com,562.555.0157,pro,3800,billing,The app was worth it until upgrades broke; text me at (562) 555-0157.
+MA-1101,Ana Souza,ana.souza@example.com,(202) 555-0106,pro,3900,login,"Great reports, slow support. I'm Ana Souza: ana.souza@example.com, (202) 555-0106."
+MA-1102,Ana Souza,ana.souza@example.com,(202) 555-0106,pro,3900,billing,"Love the reports; invoices miss Apt 4B, 184 Willow Lane, Pasadena CA 91101."
+MA-1103,Ana Souza,ana.souza@example.com,(202) 555-0106,pro,3900,login,"Easy setup, but verifying SSN 900-12-3456 and DOB 1990-02-14 took days."
+MA-1104,Ana Souza,ana.souza@example.com,(202) 555-0106,pro,3900,login,"Useful dashboards, but passport X80001427 took three tries to verify."
+MA-1105,Ana Souza,ana.souza@example.com,(202) 555-0106,pro,3900,reports,Good reports; signup with license D0004827 and national ID 900123456 was painful.
+MA-1106,Ana Souza,ana.souza@example.com,(202) 555-0106,pro,3900,billing,"Poor refunds: card 4242 4242 4242 4242, bank 000046281935. Still waiting."
+MA-1107,Ana Souza,ana.souza@example.com,(202) 555-0106,pro,3900,login,"Great desktop app; uploads crawl on a4c91e7b at 192.0.2.42, user asouza_27."
+MA-1108,Ana Souza,ana.souza@example.com,(202) 555-0106,pro,3900,mobile,Mobile sync is unreliable at 2001:db8::42. I'm asouza_27; desktop works well.

@@ -1,11 +1,19 @@
 ticket_id,customer_name,email,phone,plan_tier,account_value,product_area,message
-RC-2001,Grace Turner,grace.turner@example.com,(415) 555-0101,pro,5100,sync,Files uploaded from the desktop client don't sync to mobile.
-RC-2002,Henry Walsh,henry.walsh@example.org,415-555-0118,basic,220,billing,"Annual plan renewal charged me at the monthly rate."
-RC-2003,Chloé Dubois,chloe.dubois@example.fr,+1 650 555 0146,enterprise,72000,sharing,"Shared folder links expire too fast; reach me at chloe.dubois@example.fr."
-RC-2004,Daniel Novak,daniel.novak@example.com,510.555.0139,pro,4700,search,Search doesn't find documents by their title.
-RC-2005,Mia Johansson,mia.j@example.com,(408) 555-0172,basic,190,sync,"Sync stalls at 99% — every single time, on two laptops."
-RC-2006,Samuel Ortiz,samuel.ortiz@example.com,707 555 0164,pro,4400,sharing,External collaborators can't open view-only links.
-RC-2007,Zoe Hart,zoe.hart@example.org,(925) 555-0155,enterprise,69000,admin,Audit log export times out for large teams. Call 925-555-0155.
-RC-2008,Jack Fischer,jack.fischer@example.com,831-555-0127,basic,160,billing,Receipt emails go to my old address instead of the new one.
-RC-2009,Lily Nguyen,lily.nguyen@example.com,(209) 555-0193,pro,4300,search,"Search results show deleted files, which is confusing."
-RC-2010,Owen Clarke,owen.clarke@example.com,559.555.0148,pro,4500,admin,"Admin console logs me out every 5 minutes; contact owen.clarke@example.com."
+RC-2001,Grace Turner,grace.turner@example.com,(415) 555-0101,pro,5100,sync,"Great on desktop, but mobile uploads never sync. I'm Grace Turner."
+RC-2002,Henry Walsh,henry.walsh@example.org,415-555-0118,basic,220,billing,"Nice tools, but annual renewal charged the monthly rate. Henry Walsh here."
+RC-2003,Chloé Dubois,chloe.dubois@example.fr,+1 650 555 0146,enterprise,72000,sharing,"Easy sharing, but links expire too fast. Email chloe.dubois@example.fr."
+RC-2004,Daniel Novak,daniel.novak@example.com,510.555.0139,pro,4700,search,"Clean layout, weak search: it misses exact titles. I'm Daniel Novak."
+RC-2005,Mia Johansson,mia.j@example.com,(408) 555-0172,basic,190,sync,"Helpful team folders, but sync stalls at 99%. I'm Mia Johansson."
+RC-2006,Samuel Ortiz,samuel.ortiz@example.com,707 555 0164,pro,4400,sharing,I love shared folders; view-only links still fail for my teammate Samuel Ortiz.
+RC-2007,Zoe Hart,zoe.hart@example.org,(925) 555-0155,enterprise,69000,admin,"Useful audit logs, slow exports. Call 925-555-0155; our team keeps getting stuck."
+RC-2008,Jack Fischer,jack.fischer@example.com,831-555-0127,basic,160,billing,"Good value, but receipts use the wrong address: 56 Birch Lane, Albany NY 12207."
+RC-2009,Lily Nguyen,lily.nguyen@example.com,(209) 555-0193,pro,4300,search,Search is quick but shows deleted files. I'm Lily Nguyen; it feels unreliable.
+RC-2010,Owen Clarke,owen.clarke@example.com,559.555.0148,pro,4500,admin,"Handy admin tools, but constant logouts ruin it. Email owen.clarke@example.com."
+RC-2101,Maya Bennett,maya.bennett@example.org,(415) 555-0106,pro,3900,sync,"Great for teams, slow support. Maya Bennett: maya.bennett@example.org, (415) 555-0106."
+RC-2102,Maya Bennett,maya.bennett@example.org,(415) 555-0106,pro,3900,billing,"Sharing is great; receipts omit Unit 8, 72 Alder Street, Brooklyn NY 11201."
+RC-2103,Maya Bennett,maya.bennett@example.org,(415) 555-0106,pro,3900,admin,Love team folders; SSN 900-98-7654 and DOB 1988-11-23 verification was frustrating.
+RC-2104,Maya Bennett,maya.bennett@example.org,(415) 555-0106,pro,3900,admin,"Good storage value, but verifying passport X80002618 delayed my upgrade."
+RC-2105,Maya Bennett,maya.bennett@example.org,(415) 555-0106,pro,3900,admin,"Easy sharing, awful signup: license N0006718 and national ID 900987654 kept failing."
+RC-2106,Maya Bennett,maya.bennett@example.org,(415) 555-0106,pro,3900,billing,Poor billing: card 4111 1111 1111 1111 and bank 000073914826 were charged twice.
+RC-2107,Maya Bennett,maya.bennett@example.org,(415) 555-0106,pro,3900,sharing,"Fast search, flaky sharing from 198.51.100.84 on b7d82f10, user mbennett_84."
+RC-2108,Maya Bennett,maya.bennett@example.org,(415) 555-0106,pro,3900,sync,Love the editor; sync drops on 2001:db8::84. My account is mbennett_84.

@@ -111,7 +111,8 @@ def test_changed_source_invalidates_approval(client, a, settings, receiver, monk
     assert send(client, a, p).json()["error"]["code"] == "REQUEST_NOT_READY"  # stored stale
     assert receiver.invocations == []
     p2 = preview(client, a).json()
-    assert p2["dataset_revision"] == 2 and len(p2["outbound_payload"]["messages"]) == 11
+    assert p2["dataset_revision"] == 2
+    assert len(p2["outbound_payload"]["messages"]) == len(p["outbound_payload"]["messages"]) + 1
 
 
 @pytest.mark.scenario("SEC-09")
@@ -174,13 +175,14 @@ def test_review_hides_messages_and_invalidates_previous_approval(client, a, rece
 def test_review_validation(client, a):
     p = preview(client, a).json()
     url = f"/api/requests/{p['request_id']}/review"
-    for bad in ([10], [-1]):
+    message_count = len(p["outbound_payload"]["messages"])
+    for bad in ([message_count], [-1]):
         r = client.patch(url, headers=a, json={"expected_review_revision": 1, "hide_message_indices": bad})
         assert r.status_code == 422 and r.json()["error"]["code"] == "INVALID_REVIEW"
     for bad in ([True], ["1"], [1.0]):
         r = client.patch(url, headers=a, json={"expected_review_revision": 1, "hide_message_indices": bad})
         assert r.status_code == 422 and r.json()["error"]["code"] == "INVALID_REQUEST"
-    r = client.patch(url, headers=a, json={"expected_review_revision": 1, "hide_message_indices": list(range(10))})
+    r = client.patch(url, headers=a, json={"expected_review_revision": 1, "hide_message_indices": list(range(message_count))})
     assert r.status_code == 422 and r.json()["error"]["code"] == "NO_CONTENT_TO_SEND"
     # Review left unchanged by the refused edit.
     r = client.patch(url, headers=a, json={"expected_review_revision": 1, "hide_message_indices": [2]})
