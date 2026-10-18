@@ -62,8 +62,9 @@ Sessions and their tokens live in memory, so after a backend restart the UI will
 ## Verify
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q      # 43 passed
+cd backend && .venv/bin/python -m pytest -q      # 47 passed
 cd frontend && npm run lint && npm run build     # clean lint, build OK
+cd frontend && node --experimental-strip-types --test tests/redaction.test.ts   # 9 passed; review-card display helpers, no extra deps
 ```
 
 Tests use a fresh temporary DB and source copies per test. They never touch `backend/var/`.
@@ -78,8 +79,8 @@ Keep a third terminal in `backend/` with the venv active for the owner controls.
 2. **Review.** Click *Prepare preview*.
    - Seven columns are removed.
    - Two emails and two phone numbers inside messages are shown as solid redaction bars.
-   - Expand *Technical verification details* to inspect the content fingerprint if needed.
-3. **Hide.** Hide one message. The review revision goes from 1 to 2 and the hash changes.
+   - Note the payload hash.
+3. **Hide.** Each message is a review card showing its position, outbound text, locked owner-policy redactions and include/hide state. Click *Hide from send* on one card. The review revision goes from 1 to 2, and *Technical verification details* shows the new fingerprint plus the previous one, which is no longer approvable. *Restore redacted version* brings back only the server's redacted text.
 4. **Send.** Tick the approval and click *Approve and send*. You get a green *Sent* stamp, the local receiver's acknowledgement ("no external AI model was called") and a receipt where the confirmed hash equals the prepared hash.
 5. **Revoke mid-flight.** Click *Start a new request*, then *Prepare preview*. Before sending, run:
    ```bash
@@ -120,6 +121,7 @@ backend/
 frontend/src/
   api.ts, types.ts   API client and wire types (mirror API_CONTRACT.md)
   labels.ts          Human-readable labels for purposes, destinations, decisions
+  redaction.ts       Display-only parsing of server placeholders ([EMAIL]/[PHONE]) into locked markers
   App.tsx            App state and flow orchestration
   components/        AccountGate, RequestForm, ManifestReview, ApprovalPanel, OutcomePanel
   index.css          Design tokens and styles

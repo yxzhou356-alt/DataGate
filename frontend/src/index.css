@@ -57,12 +57,12 @@ code { font-family: var(--mono); }
   border-radius: 6px; padding: 0.6rem 1rem; cursor: pointer;
   border: 1px solid transparent; transition: background-color 120ms, border-color 120ms;
 }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled, .btn[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
 .btn-primary { background: var(--ink); color: var(--paper); }
 .btn-primary:not(:disabled):hover { background: color-mix(in srgb, var(--ink) 85%, var(--focus)); }
 .btn-secondary { background: transparent; color: var(--ink); border-color: var(--ink); }
 .btn-quiet { background: transparent; color: var(--muted); border-color: var(--line); padding: 0.35rem 0.7rem; font-size: 0.8125rem; }
-.btn-quiet:not(:disabled):hover { color: var(--ink); border-color: var(--ink); }
+.btn-quiet:not(:disabled):not([aria-disabled='true']):hover { color: var(--ink); border-color: var(--ink); }
 
 .field { display: grid; gap: 0.35rem; border: 0; padding: 0; margin: 0; }
 .field legend, .field-label { font-weight: 600; font-size: 0.875rem; padding: 0; margin-bottom: 0.35rem; }
@@ -147,15 +147,59 @@ select {
 .rules { display: grid; gap: 0.5rem; font-size: 0.9375rem; max-width: 72ch; }
 .instruction { border-left: 3px solid var(--line); padding-left: 0.85rem; font-size: 0.9375rem; }
 .instruction-label { display: block; color: var(--muted); font-size: 0.8125rem; }
-.messages { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-.message {
-  display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: 0.75rem; align-items: start;
-  padding: 0.75rem 0; border-bottom: 1px solid var(--line);
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.message-index { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.875rem; padding-top: 0.1rem; text-align: right; }
-.message-text { max-width: 72ch; line-height: 1.6; }
-.message.is-hidden .message-text { background: var(--hidden-bg); border-radius: 4px; padding: 0.15rem 0.6rem; }
+
+/* Two separate stories: columns dropped vs. text replaced inside messages. */
+.review-summary { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.review-summary > .summary-help { grid-column: 1 / -1; }
+.summary-block { background: var(--paper); border-radius: 6px; padding: 0.75rem 0.85rem; display: grid; gap: 0.4rem; align-content: start; }
+.summary-title { font-size: 0.9375rem; }
+.summary-help { color: var(--muted); font-size: 0.8125rem; max-width: 72ch; }
+.field-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.field-chip {
+  font-size: 0.8125rem; border: 1px dashed var(--muted); border-radius: 3px; padding: 0.05rem 0.45rem;
+  color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px;
+}
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; font-size: 0.8125rem; }
+.lock-note { color: var(--ink); display: inline-flex; align-items: center; gap: 0.3rem; }
+/* Small padlock drawn in CSS so it inherits the text colour in both themes. */
+.lock {
+  display: inline-block; width: 0.6rem; height: 0.5rem; background: currentColor; border-radius: 1px;
+  position: relative; margin: 0.3rem 0.35rem 0 0.1rem; flex: none; vertical-align: baseline;
+}
+.lock::before {
+  content: ''; position: absolute; left: 0.1rem; right: 0.1rem; bottom: 100%; height: 0.32rem;
+  border: 2px solid currentColor; border-bottom: 0; border-radius: 0.3rem 0.3rem 0 0;
+}
+
+.review-count { font-size: 0.9375rem; }
+.review-failure {
+  padding: 0.75rem 0.85rem; border-radius: 6px; border: 1px solid var(--stop); font-size: 0.875rem;
+  background: color-mix(in srgb, var(--stop) 8%, var(--surface)); display: grid; gap: 0.4rem;
+}
+
+.review-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.review-card {
+  border: 1px solid var(--line); border-left: 4px solid var(--ink); border-radius: 6px;
+  padding: 0.7rem 0.85rem; display: grid; gap: 0.5rem; min-width: 0;
+}
+.review-card.is-hidden { border-left-color: var(--muted); background: var(--hidden-bg); }
+.review-card.is-pending { opacity: 0.7; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.card-title { font-size: 0.875rem; font-weight: 700; }
+.card-of { color: var(--muted); font-weight: 400; }
+.state-badge { font-size: 0.75rem; font-weight: 600; border-radius: 3px; padding: 0.05rem 0.45rem; border: 1px solid currentColor; }
+.state-included { color: var(--ok); }
+.state-hidden { color: var(--muted); border-style: dashed; }
+.message-text { max-width: 72ch; line-height: 1.6; overflow-wrap: anywhere; }
 .hidden-note { color: var(--muted); font-style: italic; font-size: 0.9375rem; }
+.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; flex-wrap: wrap; }
+.card-detected { color: var(--muted); font-size: 0.8125rem; display: inline-flex; align-items: baseline; flex-wrap: wrap; }
+.card-toggle { margin-left: auto; }
+.card-hint { color: var(--muted); font-size: 0.8125rem; }
 
 /* The signature element: a solid ink bar where an identifier used to be. */
 .redaction {
@@ -172,6 +216,8 @@ select {
 .facts dd { margin: 0; font-weight: 600; }
 .facts-wide { grid-column: 1 / -1; }
 .hash { font-size: 0.75rem; word-break: break-all; font-weight: 400; line-height: 1.5; }
+.review-changed { font-size: 0.875rem; border-left: 3px solid var(--focus); padding-left: 0.6rem; }
+.tech-updated { color: var(--focus); font-weight: 600; }
 .technical-details { border-top: 1px solid var(--line); padding-top: 0.65rem; font-size: 0.8125rem; }
 .technical-details summary { color: var(--muted); cursor: pointer; font-weight: 600; }
 .technical-details[open] summary { color: var(--ink); margin-bottom: 0.55rem; }
