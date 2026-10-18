@@ -113,3 +113,52 @@ export interface ApiErrorBody {
   request_id: string | null
   action: string
 }
+
+// Security evidence report (read-only, metadata only). See API_CONTRACT.md §13.
+export type ScenarioResult = 'passed' | 'failed' | 'not_run'
+
+export interface EvidenceScenario {
+  id: string
+  title: string
+  claim: string
+  result: ScenarioResult
+  duration_seconds: number
+  tests_total: number
+  tests_passed: number
+  tests_failed: number
+  tests_not_run: number
+  evidence: string[]
+  failure_summary: string | null
+}
+
+export interface SecurityReport {
+  schema_version: string
+  report_type: string
+  generated_at: string
+  git: { commit: string | null; dirty: boolean | null }
+  suite: {
+    id: string
+    command: string
+    run_status: 'complete' | 'interrupted' | 'error'
+    pytest_exit_code: number | null
+    tests_collected: number
+    tests_passed: number
+    tests_failed: number
+    tests_not_run: number
+    duration_seconds: number
+  }
+  isolation: { storage: string; receiver: string; runtime_db_unchanged: boolean | null }
+  totals: Record<ScenarioResult, number>
+  scenarios: EvidenceScenario[]
+  disclaimer: string
+}
+
+export interface EvidenceView {
+  availability: 'available' | 'missing' | 'invalid'
+  problem: string | null
+  current_commit: string | null
+  current_dirty: boolean | null
+  freshness: 'current' | 'stale' | 'unknown'
+  report: SecurityReport | null
+  disclaimer: string
+}

@@ -7,6 +7,7 @@ import { ManifestReview, type ReviewFailure } from './components/ManifestReview'
 import { ApprovalPanel, type ReviewChange } from './components/ApprovalPanel'
 import { HIDDEN_MARKER, countPlaceholders, placeholderTypes, toggleIndex } from './redaction'
 import { OutcomePanel } from './components/OutcomePanel'
+import { EvidenceDashboard } from './components/EvidenceDashboard'
 
 interface Session { token: string; account: Account }
 interface Notice { code: string; message: string; action: string; needsNewPreview: boolean }
@@ -48,6 +49,14 @@ export default function App() {
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [busy, setBusy] = useState(false)
+  // '#evidence' opens the read-only security evidence dashboard; the request state is kept meanwhile.
+  const [view, setView] = useState<'app' | 'evidence'>(() => (window.location.hash === '#evidence' ? 'evidence' : 'app'))
+
+  useEffect(() => {
+    const onHash = () => setView(window.location.hash === '#evidence' ? 'evidence' : 'app')
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   const showError = useCallback((err: unknown) => {
     if (err instanceof ApiError) {
@@ -195,6 +204,9 @@ export default function App() {
     }
   })
 
+  if (view === 'evidence') {
+    return <EvidenceDashboard onBack={() => { window.location.hash = '' }} />
+  }
   if (!session) return <AccountGate busy={busy} onSelect={signIn} />
 
   const draftLocked = !!receipt || !!notice?.needsNewPreview
@@ -218,6 +230,7 @@ export default function App() {
           Signed in as <strong>{session.account.display_name}</strong>
           <span className="demo-tag">demo session</span>
         </span>
+        <a className="btn btn-quiet" href="#evidence">Security evidence</a>
         <button className="btn btn-quiet" onClick={signOut}>Switch account</button>
       </header>
 

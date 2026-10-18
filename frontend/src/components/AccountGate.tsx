@@ -28,6 +28,9 @@ export function AccountGate({ busy, onSelect }: Props) {
             </button>
           ))}
         </div>
+        <p className="gate-evidence">
+          <a href="#evidence">View the security test evidence</a> (no sign-in needed)
+        </p>
       </div>
     </main>
   )

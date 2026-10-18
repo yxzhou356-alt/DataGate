@@ -5,12 +5,13 @@ Run (one worker):  uvicorn app.main:create_app --factory --host 127.0.0.1 --port
 
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import SessionStore, current_account
 from .config import Settings, settings_from_env
 from .errors import ApiError, install_error_handlers
+from .evidence import read_report_view
 from .receiver import ReceiverAdapter, build_receiver
 from .schemas import PreviewBody, ReviewBody, SendBody, SessionBody
 from .seed import seed
@@ -42,6 +43,13 @@ def create_app(settings: Settings | None = None, receiver: ReceiverAdapter | Non
     @app.get("/api/health")
     def health() -> dict:
         return {"ok": True, "receiver_mode": receiver.mode, "authentication_mode": "demo"}
+
+    @app.get("/api/evidence/security-report")
+    def security_report(response: Response) -> dict:
+        # Read-only and metadata-only: shows the last generated report file. It never runs
+        # tests and never touches the demo database. No dataset content, so no token needed.
+        response.headers["Cache-Control"] = "no-store"
+        return read_report_view(settings.report_path)
 
     @app.post("/api/demo/session")
     def demo_session(body: SessionBody) -> dict:

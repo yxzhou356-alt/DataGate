@@ -62,12 +62,45 @@ Sessions and their tokens live in memory, so after a backend restart the UI will
 ## Verify
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q      # 57 passed
+cd backend && .venv/bin/python -m pytest -q      # 79 passed
 cd frontend && npm run lint && npm run build     # clean lint, build OK
-cd frontend && node --experimental-strip-types --test tests/redaction.test.ts   # 14 passed; review-card and selection helpers, no extra deps
+cd frontend && node --experimental-strip-types --test tests/redaction.test.ts tests/evidence.test.ts   # 21 passed; display helpers, no extra deps
 ```
 
-Tests use a fresh temporary DB and source copies per test. They never touch `backend/var/`.
+Tests use a fresh temporary DB and source copies per test. They never touch `backend/var/`: a conftest guard refuses the runtime data directory and points `DATAGATE_DATA_DIR` at throwaway storage, even if you exported it.
+
+### Security evidence dashboard
+
+Generate the report. This runs the whole backend suite with temporary storage and injected test receivers:
+
+```bash
+cd backend && .venv/bin/python -m app.security_report
+```
+
+It writes `backend/var/reports/security-report.json` (git-ignored) atomically and prints the totals. Exit codes:
+- 0: all 14 scenarios passed.
+- 1: a scenario failed.
+- 2: incomplete (a scenario was not run, or the run was interrupted or errored).
+- 3: another generation is already running.
+- 4: the report failed the prohibited-content check, so nothing was written.
+
+Override the path with `--out` or `DATAGATE_REPORT_PATH`; the backend reads the same variable.
+
+View it: start the backend and frontend as above, then open http://127.0.0.1:5173/#evidence. You can also use *View the security test evidence* on the sign-in page, or *Security evidence* in the top bar. The page reads `GET /api/evidence/security-report`. That endpoint only reads the file: it never runs tests or touches the demo DB.
+
+What the dashboard shows:
+- **Totals:** 14 scenarios (SEC-01 … SEC-14), each `passed`, `failed` or `not_run`. A scenario passes only if every test mapped to it with `@pytest.mark.scenario("SEC-xx")` ran and passed.
+- **Labels:** *Missing*, *Unusable* (malformed, unsupported schema, or prohibited content), *Failed*, *Partial* (not run, interrupted or error), *Stale* (generated for another commit), *Commit unknown* (no Git), *Uncommitted changes* and *Demo DB changed*.
+- **Run metadata:** generation time and commit, run status, test counts, isolation details, and whether the runtime demo DB was unchanged.
+
+The report contains metadata only:
+- **Not included:** messages, customer values, tokens, payloads or tracebacks.
+- **Failure summaries:** test name, phase and exception class only.
+- **Content check:** the report is scanned for email/phone-like values, credential-like text and fixture values before it is written, and again before it is served.
+
+**Commit before generating** if you want a non-stale, clean report for the demo. A report generated on an older commit is labelled stale, not hidden.
+
+Passing these fixture tests is evidence that the listed cases are implemented and behaved as described. It is not a universal security or privacy guarantee.
 
 Latest review: 43 tests passed, lint/build passed, and Chrome UI checks covered preview, extra hiding, approved local send, readable receipts, blocked purpose and 390px layout. The existing tests do not catch an unclosed CSV quote merging records; see B1 in [the review](BASELINE_UX_REVIEW.md). This remains a baseline validation issue, not a passing claim.
 
@@ -105,7 +138,9 @@ Reset the demo data at any time: stop the backend, then run `python -m app.seed 
 ```
 backend/
   app/
-    config.py        Settings (data dir, receiver mode). Env: DATAGATE_DATA_DIR, DATAGATE_RECEIVER
+    config.py        Settings (data dir, receiver mode, report path). Env: DATAGATE_DATA_DIR, DATAGATE_RECEIVER, DATAGATE_REPORT_PATH
+    evidence.py      Security scenario catalogue, report validation, atomic write, prohibited-content scan
+    security_report.py  `python -m app.security_report`: runs the suite, writes the evidence report
     errors.py        Error codes + envelope; validation errors never echo input
     storage.py       SQLite schema and access (accounts, datasets, policies, grants, requests)
     seed.py          Owner setup: accounts, datasets, default policy; `python -m app.seed [--reset]`
@@ -118,11 +153,13 @@ backend/
     main.py          create_app(): routes only, thin layer over Workflow
     demo_control.py  Owner CLI: revoke, grant, sharing, bump-policy, edit-source, status
   fixtures/          Two synthetic 10-row CSVs (committed, never mutated)
-  tests/             test_flow.py, test_send_safety.py, test_transform.py, conftest.py
+  tests/             test_flow.py, test_send_safety.py, test_transform.py, test_review_ux.py,
+                     test_custom_redactions.py, test_evidence.py, conftest.py (isolation guard, scenario marker)
 frontend/src/
   api.ts, types.ts   API client and wire types (mirror API_CONTRACT.md)
   labels.ts          Human-readable labels for purposes, destinations, decisions
   redaction.ts       Display-only parsing of server placeholders; selection-to-offset helpers for custom redactions
+  evidence.ts        Evidence verdicts and labels (missing/invalid/failed/partial/stale), derived from the report
   App.tsx            App state and flow orchestration
   components/        AccountGate, RequestForm, ManifestReview, ApprovalPanel, OutcomePanel
   index.css          Design tokens and styles
@@ -135,7 +172,7 @@ Where later layers plug in (see the backlog in TEAM_WORKFLOW.md):
 - **L3 input quality:** extend `transform.read_source()` validation (duplicate `ticket_id`, row-level errors).
 - **L6 receipt integrity:** derive chained receipts from the `requests` rows in `storage.py` and `Workflow.receipt()`.
 - **L1 UX:** components only; the API surface is `api.ts`.
-- **L2 regression evidence:** add tests beside `tests/test_send_safety.py`, using the `conftest.py` fixtures (isolated store plus capturing receiver).
+- **L2 regression evidence:** add tests beside `tests/test_send_safety.py`, using the `conftest.py` fixtures (isolated store plus capturing receiver). Tag them `@pytest.mark.scenario("SEC-xx")` to count toward a dashboard scenario. Add new scenarios to `SCENARIOS` in `app/evidence.py`. An unknown id marks the run as an error.
 
 ## Implementation choices worth knowing
 

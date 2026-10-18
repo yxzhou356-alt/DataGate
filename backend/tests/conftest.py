@@ -11,16 +11,39 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import Settings  # noqa: E402
+from app.config import DEFAULT_DATA_DIR, Settings  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.receiver import FailingReceiver, LocalCapturingReceiver  # noqa: E402
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "scenario(*ids): security evidence scenario ids (SEC-xx), see app/evidence.py")
+
+
+@pytest.fixture(autouse=True)
+def _never_touch_runtime_data(tmp_path_factory, monkeypatch):
+    """Guard: even if a developer exported DATAGATE_DATA_DIR=backend/var, anything that reads
+    the environment during a test (e.g. the owner CLI) gets throwaway storage unless the test
+    deliberately points it at its own temporary directory."""
+    monkeypatch.setenv("DATAGATE_DATA_DIR", str(tmp_path_factory.mktemp("env-data")))
+    monkeypatch.delenv("DATAGATE_RECEIVER", raising=False)
+
+
+def _assert_isolated(data_dir: Path) -> None:
+    runtime = DEFAULT_DATA_DIR.resolve()
+    resolved = data_dir.resolve()
+    if resolved == runtime or runtime in resolved.parents:
+        raise RuntimeError("Tests must not use the runtime demo data directory (backend/var).")
+
 
 PREVIEW_A = {"dataset_id": "feedback_a", "purpose": "feedback_summary", "destination": "demo_receiver"}
 
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return Settings(data_dir=tmp_path / "data")
+    s = Settings(data_dir=tmp_path / "data")
+    _assert_isolated(s.data_dir)
+    return s
 
 
 @pytest.fixture
@@ -30,6 +53,7 @@ def receiver() -> LocalCapturingReceiver:
 
 @pytest.fixture
 def app(settings, receiver):
+    _assert_isolated(settings.data_dir)
     return create_app(settings, receiver)
 
 

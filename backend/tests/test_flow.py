@@ -6,6 +6,8 @@ import hashlib
 import json
 import sqlite3
 
+import pytest
+
 from conftest import PREVIEW_A, login, preview, send
 
 SENSITIVE_SOURCE_VALUES = [
@@ -14,6 +16,7 @@ SENSITIVE_SOURCE_VALUES = [
 ]
 
 
+@pytest.mark.scenario("SEC-01")
 def test_allowed_request_reaches_receiver_exactly_once_with_previewed_bytes(client, a, receiver):
     p = preview(client, a).json()
     assert p["status"] == "ready" and p["decision"] == "redact"
@@ -51,6 +54,7 @@ def test_allowed_request_reaches_receiver_exactly_once_with_previewed_bytes(clie
         assert value not in text
 
 
+@pytest.mark.scenario("SEC-01")
 def test_clean_dataset_is_allow_but_still_needs_approval(client, a, settings, receiver):
     path = settings.sources_dir / "feedback_a.csv"
     path.write_text(
@@ -63,6 +67,7 @@ def test_clean_dataset_is_allow_but_still_needs_approval(client, a, settings, re
     assert receiver.invocations == []
 
 
+@pytest.mark.scenario("SEC-01", "SEC-02")
 def test_dataset_listing_is_scoped_to_account(client, a, b):
     la = client.get("/api/datasets", headers=a).json()["datasets"]
     lb = client.get("/api/datasets", headers=b).json()["datasets"]
@@ -82,6 +87,7 @@ def test_auth_required_and_invalid_session(client):
     assert r.status_code == 422
 
 
+@pytest.mark.scenario("SEC-02")
 def test_identity_comes_from_token_not_body(client, b):
     # analyst_b cannot claim to be analyst_a through body fields.
     r = client.post("/api/requests/preview", headers=b, json={**PREVIEW_A, "user_id": "analyst_a"})
@@ -90,6 +96,7 @@ def test_identity_comes_from_token_not_body(client, b):
     assert r.status_code == 422
 
 
+@pytest.mark.scenario("SEC-02", "SEC-03")
 def test_cross_account_dataset_draft_review_receipt_are_denied(client, a, b, receiver):
     r = preview(client, b)  # b asks for feedback_a
     assert r.status_code == 403 and r.json()["error"]["code"] == "DATASET_ACCESS_DENIED"
@@ -132,20 +139,24 @@ def _assert_blocked(client, headers, body, code, receiver):
     assert receiver.invocations == []
 
 
+@pytest.mark.scenario("SEC-04")
 def test_model_training_purpose_is_blocked_with_zero_calls(client, a, receiver):
     _assert_blocked(client, a, {**PREVIEW_A, "purpose": "model_training"}, "PURPOSE_NOT_ALLOWED", receiver)
 
 
+@pytest.mark.scenario("SEC-05")
 def test_unapproved_destination_is_blocked_with_zero_calls(client, a, receiver):
     _assert_blocked(client, a, {**PREVIEW_A, "destination": "public_chatbot"}, "DESTINATION_NOT_ALLOWED", receiver)
 
 
+@pytest.mark.scenario("SEC-05")
 def test_destination_url_is_rejected(client, a, receiver):
     r = preview(client, a, {**PREVIEW_A, "destination": "https://evil.example/collect"})
     assert r.status_code == 422 and "evil.example" not in r.text
     assert receiver.invocations == []
 
 
+@pytest.mark.scenario("SEC-06")
 def test_sharing_none_blocks_even_redacted_data(client, a, settings, receiver):
     with sqlite3.connect(settings.db_path) as conn:
         conn.execute("UPDATE policies SET sharing_mode='none', policy_version=policy_version+1 WHERE dataset_id='feedback_a'")

@@ -3,9 +3,11 @@ replaced with [REDACTED_BY_USER] on the backend, in addition to owner rules."""
 
 from __future__ import annotations
 
-from conftest import login, preview, send
-
 import sqlite3
+
+import pytest
+
+from conftest import login, preview, send
 
 from app import transform
 from app.storage import Store
@@ -25,6 +27,7 @@ def _span(messages, idx, phrase):
     return {"message_index": idx, "start": start, "end": start + len(phrase)}
 
 
+@pytest.mark.scenario("SEC-11", "SEC-14")
 def test_custom_span_is_redacted_on_backend_and_bound_to_new_revision(client, a, receiver):
     p1 = preview(client, a).json()
     msgs = p1["outbound_payload"]["messages"]
@@ -63,6 +66,7 @@ def test_multiple_messages_and_overlapping_spans_are_normalised(client, a):
     assert out[1].count(CUSTOM) == 1 and out[2].count(CUSTOM) == 1
 
 
+@pytest.mark.scenario("SEC-07")
 def test_span_may_cover_but_not_cut_a_mandatory_placeholder(client, a):
     p = preview(client, a).json()
     msgs = p["outbound_payload"]["messages"]
@@ -139,6 +143,7 @@ def test_fully_redacting_every_remaining_message_is_no_content(client, a):
     assert r.status_code == 200 and r.json()["review_revision"] == 2
 
 
+@pytest.mark.scenario("SEC-03")
 def test_other_account_cannot_add_custom_redactions(client, a):
     p = preview(client, a).json()
     b = login(client, "analyst_b")

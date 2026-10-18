@@ -1,6 +1,6 @@
 // Thin client for the DataGate v1 API. The token lives in memory only.
 import type {
-  ApiErrorBody, CustomRedaction, DatasetSummary, PreviewResponse, Receipt, SendResponse, SessionResponse,
+  ApiErrorBody, CustomRedaction, DatasetSummary, EvidenceView, PreviewResponse, Receipt, SendResponse, SessionResponse,
 } from './types'
 
 export class ApiError extends Error {
@@ -69,6 +69,9 @@ export const api = {
       expected_review_revision: expectedRevision,
       preview_hash: previewHash,
     }),
+
+  /** Read-only security evidence report; no token, never runs tests. */
+  securityReport: () => call<EvidenceView>('GET', '/evidence/security-report', null),
 
   receipt: (token: string, requestId: string) =>
     call<Receipt>('GET', `/requests/${encodeURIComponent(requestId)}/receipt`, token),

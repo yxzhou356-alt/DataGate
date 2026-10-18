@@ -6,12 +6,15 @@ import sqlite3
 import threading
 import time
 
+import pytest
+
 from conftest import failing_client, login, preview, send
 
 from app import demo_control
 
 
 # ---------------------------------------------------------------- tampering --
+@pytest.mark.scenario("SEC-07")
 def test_mandatory_redaction_cannot_be_undone_by_body_tampering(client, a, receiver):
     p = preview(client, a).json()
     rid = p["request_id"]
@@ -45,6 +48,7 @@ def test_mandatory_redaction_cannot_be_undone_by_body_tampering(client, a, recei
 
 
 # --------------------------------------------------------------- revocation --
+@pytest.mark.scenario("SEC-08")
 def test_revocation_after_preview_blocks_send_with_zero_calls(client, a, receiver, settings, monkeypatch):
     p = preview(client, a).json()
     monkeypatch.setenv("DATAGATE_DATA_DIR", str(settings.data_dir))
@@ -74,6 +78,7 @@ def test_revocation_after_preview_blocks_send_with_zero_calls(client, a, receive
     assert len(receiver.invocations) == 1 and receiver.invocations[0][0] == p2["request_id"]
 
 
+@pytest.mark.scenario("SEC-08")
 def test_revocation_also_blocks_review(client, a, settings, monkeypatch):
     p = preview(client, a).json()
     monkeypatch.setenv("DATAGATE_DATA_DIR", str(settings.data_dir))
@@ -83,6 +88,7 @@ def test_revocation_also_blocks_review(client, a, settings, monkeypatch):
     assert r.status_code == 403 and r.json()["error"]["code"] == "ACCESS_REVOKED"
 
 
+@pytest.mark.scenario("SEC-06")
 def test_policy_turning_to_no_sharing_after_preview_blocks_send(client, a, settings, receiver, monkeypatch):
     p = preview(client, a).json()
     monkeypatch.setenv("DATAGATE_DATA_DIR", str(settings.data_dir))
@@ -95,6 +101,7 @@ def test_policy_turning_to_no_sharing_after_preview_blocks_send(client, a, setti
 
 
 # ---------------------------------------------------------- stale approvals --
+@pytest.mark.scenario("SEC-09")
 def test_changed_source_invalidates_approval(client, a, settings, receiver, monkeypatch):
     p = preview(client, a).json()
     monkeypatch.setenv("DATAGATE_DATA_DIR", str(settings.data_dir))
@@ -107,6 +114,7 @@ def test_changed_source_invalidates_approval(client, a, settings, receiver, monk
     assert p2["dataset_revision"] == 2 and len(p2["outbound_payload"]["messages"]) == 11
 
 
+@pytest.mark.scenario("SEC-09")
 def test_out_of_band_source_edit_without_revision_bump_is_detected(client, a, settings, receiver):
     p = preview(client, a).json()
     path = settings.sources_dir / "feedback_a.csv"
@@ -116,6 +124,7 @@ def test_out_of_band_source_edit_without_revision_bump_is_detected(client, a, se
     assert receiver.invocations == []
 
 
+@pytest.mark.scenario("SEC-10")
 def test_changed_policy_version_invalidates_approval(client, a, settings, receiver, monkeypatch):
     p = preview(client, a).json()
     monkeypatch.setenv("DATAGATE_DATA_DIR", str(settings.data_dir))
@@ -125,6 +134,7 @@ def test_changed_policy_version_invalidates_approval(client, a, settings, receiv
     assert receiver.invocations == []
 
 
+@pytest.mark.scenario("SEC-10")
 def test_out_of_band_policy_edit_detected_by_fingerprint(client, a, settings, receiver):
     p = preview(client, a).json()
     with sqlite3.connect(settings.db_path) as conn:  # no version bump
@@ -135,6 +145,7 @@ def test_out_of_band_policy_edit_detected_by_fingerprint(client, a, settings, re
 
 
 # ------------------------------------------------------------------ review --
+@pytest.mark.scenario("SEC-11")
 def test_review_hides_messages_and_invalidates_previous_approval(client, a, receiver):
     p1 = preview(client, a).json()
     rid = p1["request_id"]
@@ -177,6 +188,7 @@ def test_review_validation(client, a):
 
 
 # ------------------------------------------------------ duplicate/concurrent --
+@pytest.mark.scenario("SEC-12")
 def test_duplicate_send_does_not_invoke_twice(client, a, receiver):
     p = preview(client, a).json()
     assert send(client, a, p).status_code == 200
@@ -187,6 +199,7 @@ def test_duplicate_send_does_not_invoke_twice(client, a, receiver):
     assert len(receiver.invocations) == 1
 
 
+@pytest.mark.scenario("SEC-12")
 def test_concurrent_sends_invoke_receiver_once(app, client, a, receiver):
     original = receiver.send
 
@@ -213,6 +226,7 @@ def test_concurrent_sends_invoke_receiver_once(app, client, a, receiver):
 
 
 # ----------------------------------------------------------- receiver failure --
+@pytest.mark.scenario("SEC-13")
 def test_receiver_failure_is_reported_honestly(settings):
     client, rec = failing_client(settings)
     a = login(client, "analyst_a")
@@ -230,6 +244,7 @@ def test_receiver_failure_is_reported_honestly(settings):
 
 
 # ------------------------------------------------------------------ receipts --
+@pytest.mark.scenario("SEC-03", "SEC-14")
 def test_receipt_is_metadata_only_and_creator_only(client, a, b):
     p = preview(client, a).json()
     rid = p["request_id"]

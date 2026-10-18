@@ -310,6 +310,38 @@ It edits the shared runtime SQLite policy and increments policy_version. The run
 
 Tests inject isolated fixtures/store and a capturing or failing receiver. Inspect actual adapter invocations and captured bytes. Do not expose a global unauthenticated payload-capture endpoint.
 
+## 13. Security evidence report (additive, read-only)
+
+GET /api/evidence/security-report
+
+No Authorization header: the response contains no dataset content, identities or tokens. It reads the report file written by `python -m app.security_report` (default `backend/var/reports/security-report.json`, override with DATAGATE_REPORT_PATH). It never runs tests and never touches the demo database. Response 200, `Cache-Control: no-store`:
+
+```json
+{
+  "availability":"available",
+  "problem":null,
+  "current_commit":"<40-hex or null>",
+  "current_dirty":false,
+  "freshness":"current",
+  "report":{"schema_version":"1.0","report_type":"datagate-security-regression","generated_at":"<UTC>",
+    "git":{"commit":"<40-hex or null>","dirty":false},
+    "suite":{"id":"backend-pytest","command":"python -m app.security_report","run_status":"complete",
+             "pytest_exit_code":0,"tests_collected":79,"tests_passed":79,"tests_failed":0,"tests_not_run":0,"duration_seconds":1.5},
+    "isolation":{"storage":"...","receiver":"...","runtime_db_unchanged":true},
+    "totals":{"passed":14,"failed":0,"not_run":0},
+    "scenarios":[{"id":"SEC-01","title":"...","claim":"...","result":"passed","duration_seconds":0.02,
+                  "tests_total":3,"tests_passed":3,"tests_failed":0,"tests_not_run":0,
+                  "evidence":["test_flow.py::test_..."],"failure_summary":null}],
+    "disclaimer":"..."},
+  "disclaimer":"..."
+}
+```
+
+- availability: `available | missing | invalid`. A malformed file, an unsupported `schema_version`/`report_type`, an unknown result or run status, or a file that fails the prohibited-content scan is `invalid`, with a safe `problem` and `report: null`.
+- freshness: `current` (report commit == running commit), `stale` (differs) or `unknown` (either commit unavailable).
+- result: `passed | failed | not_run`; run_status: `complete | interrupted | error`. Totals are recomputed by the server from the scenarios. A catalogue scenario that is absent from the file is returned as `not_run`.
+- failure_summary contains only a test name, a phase and an exception class name. Reports never contain messages, customer values, tokens, payloads or tracebacks.
+
 ## 12. Future contract changes
 
 Layer tasks preserve v1 by default. Changes to routes, names, states, payload template, database schema or startup behavior require one coordinated update to this file, backend schema, frontend types and tests. No assistant invents a parallel API version independently.
