@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from './api'
-import type { Account, DatasetSummary, PreviewResponse, Receipt, SendResponse } from './types'
+import type { Account, CustomRedaction, DatasetSummary, PreviewResponse, Receipt, SendResponse } from './types'
 import { AccountGate } from './components/AccountGate'
 import { RequestForm } from './components/RequestForm'
 import { ManifestReview, type ReviewFailure } from './components/ManifestReview'
@@ -23,7 +23,15 @@ const REVIEW_UNCHANGED_CODES = new Set(['NO_CONTENT_TO_SEND', 'INVALID_REVIEW'])
 /** Approval is bound to one exact draft state; any new revision or hash needs a fresh tick. */
 const approvalKey = (p: PreviewResponse) => `${p.request_id}:${p.review_revision}:${p.preview_hash}`
 
-interface KnownRedactions { requestId: string; byIndex: Record<number, Record<string, number>> }
+/**
+ * Per request: each message's mandatory-redacted base text (the server text before any
+ * requester choice) and its owner-placeholder counts. Custom offsets refer to this base.
+ */
+interface KnownRedactions {
+  requestId: string
+  counts: Record<number, Record<string, number>>
+  base: Record<number, string>
+}
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -68,12 +76,19 @@ export default function App() {
   const acceptPreview = (p: PreviewResponse) => {
     setPreview(p)
     const types = placeholderTypes(Object.keys(p.redaction_counts))
+    const customised = new Set((p.custom_redactions ?? []).map((c) => c.message_index))
     setKnown((prev) => {
-      const byIndex = prev?.requestId === p.request_id ? { ...prev.byIndex } : {}
+      const same = prev?.requestId === p.request_id
+      const counts = same ? { ...prev.counts } : {}
+      const base = same ? { ...prev.base } : {}
       p.outbound_payload?.messages.forEach((m, i) => {
-        if (m !== HIDDEN_MARKER) byIndex[i] = countPlaceholders(m, types)
+        // Only text with no requester choice applied is the base for that message.
+        if (m !== HIDDEN_MARKER && !customised.has(i)) {
+          base[i] = m
+          counts[i] = countPlaceholders(m, types)
+        }
       })
-      return { requestId: p.request_id, byIndex }
+      return { requestId: p.request_id, counts, base }
     })
   }
 
@@ -103,7 +118,8 @@ export default function App() {
     if (p.status === 'blocked') await loadReceipt(session.token, p.request_id)
   })
 
-  const toggleHidden = async (index: number) => {
+  /** Sends a complete review state (hidden indices + custom spans). The server returns the authoritative preview. */
+  const submitReview = async (index: number, hide: number[], custom: CustomRedaction[]) => {
     if (!session || !preview || preview.review_revision === null || busy) return
     const before = preview
     // Withdraw approval before the request leaves, so a failed or slow PATCH never
@@ -113,7 +129,7 @@ export default function App() {
     setPendingIndex(index)
     setBusy(true)
     try {
-      const next = await api.review(session.token, before.request_id, before.review_revision!, toggleIndex(before.hidden_message_indices, index))
+      const next = await api.review(session.token, before.request_id, before.review_revision!, hide, custom)
       acceptPreview(next)
       setLastChange({ fromRevision: before.review_revision!, toRevision: next.review_revision!, previousHash: before.preview_hash })
     } catch (err) {
@@ -125,19 +141,40 @@ export default function App() {
         showError(err)
       } else if (err instanceof ApiError && (STALE_CODES.has(err.code) || err.code === 'INVALID_SESSION' || err.code === 'AUTH_REQUIRED')) {
         showError(err)
-      } else if (err instanceof ApiError) {
-        setReviewFailure({
-          code: err.code, message: err.message, action: err.action, index,
-          previewUnchanged: REVIEW_UNCHANGED_CODES.has(err.code),
-        })
       } else {
-        setReviewFailure({ code: 'UNKNOWN', message: 'The review change failed.', action: 'Try again.', index, previewUnchanged: false })
+        const apiErr = err instanceof ApiError ? err : null
+        setReviewFailure({
+          code: apiErr?.code ?? 'UNKNOWN',
+          message: apiErr?.message ?? 'The review change failed.',
+          action: apiErr?.action ?? 'Try again.',
+          index, hide, custom,
+          previewUnchanged: !!apiErr && REVIEW_UNCHANGED_CODES.has(apiErr.code),
+        })
       }
     } finally {
       setPendingIndex(null)
       setBusy(false)
     }
   }
+
+  const currentCustom = () => preview?.custom_redactions ?? []
+
+  const toggleHidden = (index: number) => {
+    if (!preview) return
+    submitReview(index, toggleIndex(preview.hidden_message_indices, index), currentCustom())
+  }
+
+  const addCustom = (index: number, span: { start: number; end: number }) => {
+    if (!preview) return
+    submitReview(index, preview.hidden_message_indices, [...currentCustom(), { message_index: index, ...span }])
+  }
+
+  const removeCustom = (index: number, start: number | null) => {
+    if (!preview) return
+    const keep = currentCustom().filter((c) => c.message_index !== index || (start !== null && c.start !== start))
+    submitReview(index, preview.hidden_message_indices, keep)
+  }
+
 
   const sendNow = () => run(async () => {
     if (!session || !preview || !preview.preview_hash || preview.review_revision === null) return
@@ -213,8 +250,12 @@ export default function App() {
               busy={busy}
               pendingIndex={pendingIndex}
               failure={reviewFailure}
-              knownRedactions={known?.requestId === preview.request_id ? known.byIndex : {}}
+              knownRedactions={known?.requestId === preview.request_id ? known.counts : {}}
+              baseTexts={known?.requestId === preview.request_id ? known.base : {}}
               onToggle={toggleHidden}
+              onAddCustom={addCustom}
+              onRemoveCustom={removeCustom}
+              onRetryFailure={() => reviewFailure && submitReview(reviewFailure.index, reviewFailure.hide, reviewFailure.custom)}
               onDismissFailure={() => setReviewFailure(null)}
             />
             <div className="side">

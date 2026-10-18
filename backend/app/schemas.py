@@ -27,9 +27,19 @@ class PreviewBody(_Strict):
     destination: Identifier  # a configured identifier, never a URL
 
 
+class CustomRedactionBody(_Strict):
+    """A span of the server's mandatory-redacted message text (code points, end-exclusive).
+    Ranges are validated by the workflow; there is no field for replacement text."""
+    message_index: StrictInt
+    start: StrictInt
+    end: StrictInt
+
+
 class ReviewBody(_Strict):
     expected_review_revision: Annotated[StrictInt, Field(ge=1)]
     hide_message_indices: Annotated[list[StrictInt], Field(max_length=10_000)]
+    # Omitted = keep the stored custom redactions; [] clears them.
+    custom_redactions: Annotated[list[CustomRedactionBody], Field(max_length=1_000)] | None = None
 
 
 class SendBody(_Strict):

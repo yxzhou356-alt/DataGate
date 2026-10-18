@@ -135,7 +135,15 @@ class Workflow:
     # ------------------------------------------------------------------ #
     # Review (additional whole-message hiding only)
     # ------------------------------------------------------------------ #
-    def review(self, account_id: str, request_id: str, expected_revision: int, hide: list[int]) -> dict:
+    def review(
+        self,
+        account_id: str,
+        request_id: str,
+        expected_revision: int,
+        hide: list[int],
+        custom: list[tuple[int, int, int]] | None = None,
+    ) -> dict:
+        """Replace the review choices. ``custom`` None keeps the stored custom redactions."""
         req = self._owned(account_id, request_id)
         if req["status"] != "ready":
             raise ApiError("REQUEST_NOT_READY", request_id)
@@ -151,13 +159,27 @@ class Workflow:
         if len(indices) >= n:
             raise ApiError("NO_CONTENT_TO_SEND", request_id)
 
-        prepared = transform.prepare(source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions, indices)
+        if custom is None:
+            spans = transform.custom_from_wire(req["custom_redactions"])
+        else:
+            try:
+                base = transform.redacted_messages(source, pol.required_redactions)
+                spans = transform.normalize_custom(custom, base, pol.required_redactions)
+            except transform.CustomRedactionInvalid:
+                raise ApiError("INVALID_REVIEW", request_id)
+
+        prepared = transform.prepare(
+            source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions, indices, spans
+        )
+        if not transform.has_content(prepared.payload["messages"]):
+            raise ApiError("NO_CONTENT_TO_SEND", request_id)
         ok = self.store.update_request_if(
             request_id,
             {"status": "ready", "review_revision": expected_revision},
             {
                 "review_revision": expected_revision + 1,
                 "hidden_indices": indices,
+                "custom_redactions": transform.custom_to_wire(spans),
                 "redaction_counts": prepared.redaction_counts,
                 "preview_hash": prepared.preview_hash,
             },
@@ -185,7 +207,8 @@ class Workflow:
 
         # Rebuild from backend source + stored choices; never from client content.
         prepared = transform.prepare(
-            source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions, req["hidden_indices"]
+            source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions,
+            req["hidden_indices"], transform.custom_from_wire(req["custom_redactions"]),
         )
         if prepared.preview_hash != req["preview_hash"]:
             self._mark_stale(req, "PREVIEW_CHANGED")
@@ -267,6 +290,9 @@ class Workflow:
             "reason_codes": req["reason_codes"],
             "redaction_counts": req["redaction_counts"],
             "additional_hidden_messages": len(req["hidden_indices"]),
+            "additional_custom_redactions": sum(
+                1 for c in req["custom_redactions"] if c["message_index"] not in req["hidden_indices"]
+            ),
             "prepared_payload_hash": req["preview_hash"],
             "confirmed_sent_payload_hash": req["confirmed_sent_hash"],
             "receiver_mode": req["receiver_mode"],
@@ -346,6 +372,7 @@ class Workflow:
             "dropped_fields": req["dropped_fields"],
             "redaction_counts": req["redaction_counts"],
             "hidden_message_indices": req["hidden_indices"],
+            "custom_redactions": req["custom_redactions"],
             "outbound_payload": prepared.payload if prepared else None,
             "preview_hash": prepared.preview_hash if prepared else None,
             "receiver_mode": req["receiver_mode"],

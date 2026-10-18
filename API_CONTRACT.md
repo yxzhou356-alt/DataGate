@@ -125,6 +125,7 @@ Ready response 200:
   "dropped_fields":["ticket_id","customer_name","email","phone","plan_tier","account_value","product_area"],
   "redaction_counts":{"EMAIL":1,"PHONE":0},
   "hidden_message_indices":[],
+  "custom_redactions":[],
   "outbound_payload":{
     "schema_version":"1.0",
     "purpose":"feedback_summary",
@@ -155,9 +156,29 @@ Request:
 {"expected_review_revision":1,"hide_message_indices":[0]}
 ```
 
-Indices are zero-based positions in the registered source under its fixed revision. Only additional whole-message hiding is supported. Deduplicate/sort valid indices. Replace selected messages with [HIDDEN_BY_USER]; never restore mandatory-redacted text from client input.
+Indices are zero-based positions in the registered source under its fixed revision. Requesters may hide whole messages and redact parts of messages (below); nothing else. Deduplicate/sort valid indices. Replace selected messages with [HIDDEN_BY_USER]; never restore mandatory-redacted text from client input.
 
 Return the full ready-preview shape with incremented review_revision, new payload/hash and hidden_message_indices. A stale expected revision gets 409 REVIEW_CHANGED. Invalid/out-of-range indices get 422 INVALID_REVIEW. Refuse to prepare a request with all messages hidden: 422 NO_CONTENT_TO_SEND, leaving the existing review unchanged.
+
+### 7.1 Custom redactions (v1.1, additive)
+
+Coordinated contract change: requested by the human in the Oct 18, 2026 chat; backend schema, frontend types and tests updated together. Payload template and schema_version are unchanged.
+
+Optional request field:
+```json
+{"expected_review_revision":2,"hide_message_indices":[],
+ "custom_redactions":[{"message_index":1,"start":6,"end":19}]}
+```
+
+- Each span refers to the **mandatory-redacted text** of one message (the text the preview showed before any requester choice), in Unicode code points, end-exclusive. The client sends offsets only, never text.
+- The backend replaces each span with `[REDACTED_BY_USER]` after mandatory redaction, then applies whole-message hiding. Spans can only remove more content; they never restore anything.
+- Omitting `custom_redactions` keeps the stored spans; `[]` clears them. `hide_message_indices` keeps its complete-replacement meaning.
+- Overlapping or touching spans in one message are merged; the response echoes the normalized, sorted list as `custom_redactions` (empty on blocked previews).
+- A span may cover a mandatory placeholder such as `[EMAIL]` completely but may not cut through one. `redaction_counts` still reports the owner-rule counts.
+- Spans on a hidden message are kept, so restoring the message restores them.
+- 422 INVALID_REVIEW: index or offsets out of range, `start >= end`, a span cutting through a placeholder, more than 20 spans in one message or more than 200 in total. Wrong types or unknown span fields: 422 INVALID_REQUEST.
+- 422 NO_CONTENT_TO_SEND also applies if, after hiding and custom redaction, no message contains anything besides `[REDACTED_BY_USER]`, `[HIDDEN_BY_USER]` and whitespace. The existing review is left unchanged.
+- Drafts store spans as offsets (no text). Send rebuilds the payload from the source plus stored spans and compares the hash as usual.
 
 A policy-locked action cannot be relaxed: there is no field for unredact, allow_email, include_account_value or arbitrary outgoing text. Unknown fields receive 422 INVALID_REQUEST.
 
@@ -239,6 +260,7 @@ Creator-only response 200 after a blocked or final outcome:
   "reason_codes":["REDACTION_REQUIRED"],
   "redaction_counts":{"EMAIL":1,"PHONE":0},
   "additional_hidden_messages":0,
+  "additional_custom_redactions":0,
   "prepared_payload_hash":"<computed-sha256>",
   "confirmed_sent_payload_hash":"<same-hash-for-acknowledged-success>",
   "receiver_mode":"local_demo",
@@ -246,6 +268,8 @@ Creator-only response 200 after a blocked or final outcome:
   "occurred_at":"<UTC-ISO8601>"
 }
 ```
+
+additional_custom_redactions counts normalized custom spans on messages that were not hidden. It is a count only; the receipt never contains span text or offsets.
 
 In this receipt, policy_version is the current policy evaluated for the final dispatch/denial decision. preview_policy_version is the policy version bound to the prepared preview, or null if no preview was prepared. On a revoked request these versions may differ; preserve the prepared payload hash as metadata while confirmed_sent_payload_hash remains null.
 

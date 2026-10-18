@@ -2,7 +2,7 @@
 
 Design notes
 - The DB holds metadata only. Drafts store the *choices* needed to rebuild a
-  payload (dataset, hidden indices, hashes, versions), never the payload text,
+  payload (dataset, hidden indices, custom-redaction offsets, hashes, versions), never the payload text,
   so no customer content is persisted outside the source CSV itself.
 - Every call opens a short-lived connection. Policy/source state is always read
   fresh, so CLI edits by the owner are seen at the next protected operation.
@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS requests (
     final_policy_version   INTEGER,
     review_revision        INTEGER,
     hidden_indices         TEXT NOT NULL DEFAULT '[]',
+    custom_redactions      TEXT NOT NULL DEFAULT '[]', -- JSON list of {message_index,start,end} offsets, never text
     redaction_counts       TEXT NOT NULL DEFAULT '{}',
     dropped_fields         TEXT NOT NULL DEFAULT '[]',
     preview_hash           TEXT,
@@ -78,7 +79,7 @@ CREATE TABLE IF NOT EXISTS requests (
 """
 
 JSON_COLUMNS = {
-    "reason_codes", "hidden_indices", "redaction_counts", "dropped_fields", "receiver_result",
+    "reason_codes", "hidden_indices", "custom_redactions", "redaction_counts", "dropped_fields", "receiver_result",
     "allowed_purposes", "allowed_destinations", "outbound_fields", "required_redactions",
 }
 
@@ -118,6 +119,10 @@ class Store:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(SCHEMA)
+            # Additive migration for runtime DBs created before custom redactions existed.
+            cols = {r["name"] for r in conn.execute("PRAGMA table_info(requests)")}
+            if "custom_redactions" not in cols:
+                conn.execute("ALTER TABLE requests ADD COLUMN custom_redactions TEXT NOT NULL DEFAULT '[]'")
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:

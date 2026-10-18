@@ -3,7 +3,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  HIDDEN_MARKER, countPlaceholders, placeholderTypes, segmentMessage, shortHash, toggleIndex,
+  CUSTOM_MARKER, HIDDEN_MARKER, buildReviewSegments, countPlaceholders, cpToUnit, placeholderTypes, renderSegments,
+  segmentMessage, shortHash, snapSelection, toggleIndex, unitToCp,
 } from '../src/redaction.ts'
 
 const TYPES = placeholderTypes(['PHONE', 'EMAIL'])
@@ -66,4 +67,50 @@ test('toggling hidden indices is deduplicated and sorted', () => {
 test('short hash shows the head and tail only', () => {
   assert.equal(shortHash('a'.repeat(60) + 'bcde'), 'aaaaaaaa…bcde')
   assert.equal(shortHash(null), '—')
+})
+
+// ---------------------------------------------------------------- custom spans --
+const BASE = 'Call [PHONE] about 😕 order 42 for [EMAIL].'
+
+test('code-point and UTF-16 offsets convert across astral characters', () => {
+  const emoji = BASE.indexOf('😕')
+  assert.equal(cpToUnit(BASE, unitToCp(BASE, emoji)), emoji)
+  assert.equal(unitToCp(BASE, emoji + 2), unitToCp(BASE, emoji) + 1) // 😕 is 2 units, 1 code point
+  assert.equal(cpToUnit(BASE, 1_000), BASE.length)
+})
+
+test('segments overlay custom spans and reproduce the server outbound text', () => {
+  const order = BASE.indexOf('order 42')
+  const span = { start: unitToCp(BASE, order), end: unitToCp(BASE, order + 8) }
+  const segs = buildReviewSegments(BASE, [span], TYPES)
+  assert.equal(renderSegments(segs), `Call [PHONE] about 😕 ${CUSTOM_MARKER} for [EMAIL].`)
+  assert.deepEqual(segs.map((s) => s.kind), ['text', 'redaction', 'text', 'custom', 'text', 'redaction', 'text'])
+  for (const s of segs) if (s.kind === 'text') assert.equal(BASE.slice(s.start, s.end), s.text)
+})
+
+test('overlapping or out-of-order spans do not verify against server text', () => {
+  const segs = buildReviewSegments(BASE, [{ start: 0, end: 10 }, { start: 5, end: 12 }], TYPES)
+  assert.notEqual(renderSegments(segs), `${CUSTOM_MARKER}${BASE.slice(12)}`)
+})
+
+test('selection snapping expands over markers, trims whitespace and keeps surrogate pairs whole', () => {
+  const segs = buildReviewSegments(BASE, [], TYPES)
+  const phone = BASE.indexOf('[PHONE]')
+  // Starting inside the [PHONE] marker expands to cover all of it.
+  const snapped = snapSelection(BASE, segs, phone + 3, BASE.indexOf(' about'))!
+  assert.deepEqual(snapped, { start: unitToCp(BASE, phone), end: unitToCp(BASE, phone + 7) })
+  // Whitespace-only and reversed selections.
+  assert.equal(snapSelection(BASE, segs, 4, 5), null)
+  const order = BASE.indexOf('order')
+  assert.deepEqual(snapSelection(BASE, segs, order + 5, order - 1), { start: unitToCp(BASE, order), end: unitToCp(BASE, order + 5) })
+  // Ending between the two halves of the emoji includes the whole emoji.
+  const emoji = BASE.indexOf('😕')
+  assert.deepEqual(snapSelection(BASE, segs, emoji, emoji + 1), { start: unitToCp(BASE, emoji), end: unitToCp(BASE, emoji) + 1 })
+})
+
+test('selecting text already inside a custom span requests nothing', () => {
+  const segs = buildReviewSegments(BASE, [{ start: 0, end: 4 }], TYPES)
+  assert.equal(snapSelection(BASE, segs, 1, 3), null)
+  // Extending past it is allowed; the server merges the overlap.
+  assert.deepEqual(snapSelection(BASE, segs, 2, 12), { start: 0, end: 12 })
 })

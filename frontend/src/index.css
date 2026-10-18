@@ -164,6 +164,7 @@ select {
   color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px;
 }
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; font-size: 0.8125rem; }
+.legend-text { color: var(--ink); flex: 1 1 14rem; }
 .lock-note { color: var(--ink); display: inline-flex; align-items: center; gap: 0.3rem; }
 /* Small padlock drawn in CSS so it inherits the text colour in both themes. */
 .lock {
@@ -197,8 +198,7 @@ select {
 .message-text { max-width: 72ch; line-height: 1.6; overflow-wrap: anywhere; }
 .hidden-note { color: var(--muted); font-style: italic; font-size: 0.9375rem; }
 .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; flex-wrap: wrap; }
-.card-detected { color: var(--muted); font-size: 0.8125rem; display: inline-flex; align-items: baseline; flex-wrap: wrap; }
-.card-toggle { margin-left: auto; }
+.card-detected { color: var(--muted); font-size: 0.8125rem; flex: 1 1 14rem; }
 .card-hint { color: var(--muted); font-size: 0.8125rem; }
 
 /* The signature element: a solid ink bar where an identifier used to be. */
@@ -206,6 +206,26 @@ select {
   display: inline-flex; align-items: center; vertical-align: -0.2em; background: var(--bar); border-radius: 2px;
   min-width: 5.5em; height: 1.2em; margin: 0 0.1em; padding: 0 0.45em;
 }
+/* Requester redactions: same bar, hatched, so they read as "yours" and undoable, not owner-locked. */
+.redaction-custom {
+  border: 0; font: inherit; cursor: default;
+  background: repeating-linear-gradient(135deg, var(--bar) 0 5px, color-mix(in srgb, var(--bar) 70%, var(--paper)) 5px 9px);
+  min-width: 4em;
+}
+button.redaction-custom { cursor: pointer; }
+button.redaction-custom:not([aria-disabled='true']):hover { outline: 2px solid var(--focus); outline-offset: 1px; }
+.redaction-custom .redaction-label { background: var(--bar); padding: 0 0.25em; border-radius: 2px; }
+.message-text.is-selectable { cursor: text; }
+.message-text:focus:not(:focus-visible) { outline: none; }
+.message-text.is-selectable ::selection { background: color-mix(in srgb, var(--focus) 35%, transparent); }
+.selection-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; font-size: 0.8125rem;
+  border: 1px solid var(--focus); border-radius: 6px; padding: 0.45rem 0.6rem;
+  background: color-mix(in srgb, var(--focus) 7%, var(--surface));
+}
+.selection-text { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+.btn-small { padding: 0.35rem 0.7rem; font-size: 0.8125rem; }
+.card-actions { margin-left: auto; display: inline-flex; flex-wrap: wrap; gap: 0.4rem; justify-content: flex-end; }
 .redaction-label { color: var(--bar-label); font-size: 0.6875rem; font-weight: 600; line-height: 1; letter-spacing: 0.02em; }
 .manifest-foot { color: var(--muted); font-size: 0.875rem; max-width: 72ch; }
 

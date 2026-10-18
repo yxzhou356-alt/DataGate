@@ -39,6 +39,13 @@ export interface OutboundPayload {
   messages: string[]
 }
 
+/** A span of the server's mandatory-redacted message text, in Unicode code points (end-exclusive). */
+export interface CustomRedaction {
+  message_index: number
+  start: number
+  end: number
+}
+
 export interface PreviewResponse {
   request_id: string
   dataset_id: string
@@ -51,6 +58,7 @@ export interface PreviewResponse {
   dropped_fields: string[]
   redaction_counts: Record<string, number>
   hidden_message_indices: number[]
+  custom_redactions: CustomRedaction[]
   outbound_payload: OutboundPayload | null
   preview_hash: string | null
   receiver_mode: string
@@ -91,6 +99,7 @@ export interface Receipt {
   reason_codes: string[]
   redaction_counts: Record<string, number>
   additional_hidden_messages: number
+  additional_custom_redactions: number
   prepared_payload_hash: string | null
   confirmed_sent_payload_hash: string | null
   receiver_mode: string

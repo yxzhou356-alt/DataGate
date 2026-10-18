@@ -43,6 +43,7 @@ export function ApprovalPanel({ preview, confirmed, busy, disabledReason, lastCh
           <div><dt>Review revision</dt><dd>{preview.review_revision}{changed && <span className="tech-updated"> (was {changed.fromRevision})</span>}</dd></div>
           <div><dt>Source version</dt><dd>{preview.dataset_revision}</dd></div>
           <div><dt>Rule set version</dt><dd>{preview.policy_version}</dd></div>
+          <div><dt>Custom redactions</dt><dd>{(preview.custom_redactions ?? []).length || 'none'}</dd></div>
           <div><dt>Hidden messages (0-based)</dt><dd>{preview.hidden_message_indices.length ? preview.hidden_message_indices.join(', ') : 'none'}</dd></div>
           <div className="facts-wide">
             <dt>Content fingerprint (SHA-256)</dt>

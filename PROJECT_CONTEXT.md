@@ -99,7 +99,9 @@ redacted_only means the configured minimization/redaction pipeline must be appli
 
 Owner rules always win. Requester choices may hide additional content, not add excluded fields or reverse mandatory hiding.
 
-Baseline review choices are deliberately simple: optionally hide selected whole message entries after mandatory redaction. Use zero-based message indices under the immutable source revision. Replace these entries with [HIDDEN_BY_USER]. No generic span editor or second purpose is needed.
+Baseline review choices are deliberately simple: optionally hide selected whole message entries after mandatory redaction. Use zero-based message indices under the immutable source revision. Replace these entries with [HIDDEN_BY_USER]. No second purpose is needed.
+
+Post-baseline layer (human-assigned Oct 18, 2026): analysts may also redact selected parts of any number of messages. The browser sends only code-point offsets into the mandatory-redacted text; the backend replaces those spans with [REDACTED_BY_USER]. This supplements, and never relaxes, the owner's EMAIL/PHONE rules. See API_CONTRACT.md §7.1.
 
 ## 7. End-to-end flow
 

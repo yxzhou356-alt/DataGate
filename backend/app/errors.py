@@ -25,7 +25,7 @@ ERRORS: dict[str, tuple[int, str, str]] = {
     "DATASET_INVALID": (422, "The source dataset failed validation.", "Ask the dataset owner to fix the source."),
     "INVALID_REQUEST": (422, "The request body is invalid.", "Check the request fields."),
     "INVALID_REVIEW": (422, "The review choices are invalid.", "Choose valid message positions."),
-    "NO_CONTENT_TO_SEND": (422, "All messages would be hidden; nothing would be sent.", "Keep at least one message visible."),
+    "NO_CONTENT_TO_SEND": (422, "Every message would be hidden or fully redacted; nothing would be sent.", "Keep some content in at least one message."),
     "REVIEW_CHANGED": (409, "The review revision changed.", "Reload the latest preview and review it again."),
     "PREVIEW_CHANGED": (409, "The preview content changed.", "Review the latest preview before sending."),
     "DATASET_CHANGED": (409, "The source dataset changed after the preview.", "Create a new preview."),

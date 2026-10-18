@@ -65,7 +65,8 @@ def create_app(settings: Settings | None = None, receiver: ReceiverAdapter | Non
 
     @app.patch("/api/requests/{request_id}/review")
     def review(request_id: str, body: ReviewBody, account_id: str = Depends(current_account)) -> dict:
-        return wf().review(account_id, request_id, body.expected_review_revision, body.hide_message_indices)
+        custom = None if body.custom_redactions is None else [(c.message_index, c.start, c.end) for c in body.custom_redactions]
+        return wf().review(account_id, request_id, body.expected_review_revision, body.hide_message_indices, custom)
 
     @app.post("/api/requests/{request_id}/send")
     def send(request_id: str, body: SendBody, account_id: str = Depends(current_account)) -> dict:

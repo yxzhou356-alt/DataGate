@@ -60,6 +60,7 @@ export function OutcomePanel({ receipt, sendResult, datasetName, onStartOver }: 
         <Row k="Rule decision" v={decisionLabel(receipt.decision)} />
         <Row k="Automatically removed" v={receipt.review_revision === null ? 'Not scanned — blocked before preview' : redactions || 'No supported identifiers detected'} />
         <Row k="Messages hidden by you" v={receipt.additional_hidden_messages} />
+        <Row k="Text redacted by you" v={receipt.additional_custom_redactions ?? 0} />
         <Row k="Receiver activity" v={receiverActivity} />
         <Row k="Recorded" v={receipt.occurred_at ? new Date(receipt.occurred_at).toLocaleString() : '—'} />
       </dl>

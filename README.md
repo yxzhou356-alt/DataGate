@@ -15,7 +15,7 @@ What works today, end to end through the UI and the API:
 - Demo sign-in for two seeded analysts (`analyst_a` → MapleCo, `analyst_b` → RiverCo). Identity always comes from the server-issued token.
 - Each analyst sees only their own dataset and its owner policy (the "passport").
 - Preview builds the exact receiver payload on the backend: message column only, embedded emails and phone numbers replaced with `[EMAIL]` / `[PHONE]`, plus the SHA-256 preview hash.
-- Review: the analyst can hide whole messages (`[HIDDEN_BY_USER]`). Every change bumps the review revision and hash. Mandatory redaction cannot be reversed.
+- Review: the analyst can hide whole messages (`[HIDDEN_BY_USER]`) and select parts of any message to redact (`[REDACTED_BY_USER]`, applied on the backend). Every change bumps the review revision and hash. Mandatory redaction cannot be reversed.
 - Approve & send rechecks access, source bytes and revision, policy version and fingerprint, review revision and payload hash. Then it atomically claims dispatch and calls the local receiver exactly once.
 - Forbidden purpose (`model_training`), destination (`public_chatbot`) or `sharing_mode=none` are blocked with zero receiver calls.
 - Revoking access after a preview blocks Send. Changed source or policy marks the draft stale.
@@ -62,9 +62,9 @@ Sessions and their tokens live in memory, so after a backend restart the UI will
 ## Verify
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q      # 47 passed
+cd backend && .venv/bin/python -m pytest -q      # 57 passed
 cd frontend && npm run lint && npm run build     # clean lint, build OK
-cd frontend && node --experimental-strip-types --test tests/redaction.test.ts   # 9 passed; review-card display helpers, no extra deps
+cd frontend && node --experimental-strip-types --test tests/redaction.test.ts   # 14 passed; review-card and selection helpers, no extra deps
 ```
 
 Tests use a fresh temporary DB and source copies per test. They never touch `backend/var/`.
@@ -81,6 +81,7 @@ Keep a third terminal in `backend/` with the venv active for the owner controls.
    - Two emails and two phone numbers inside messages are shown as solid redaction bars.
    - Note the payload hash.
 3. **Hide.** Each message is a review card showing its position, outbound text, locked owner-policy redactions and include/hide state. Click *Hide from send* on one card. The review revision goes from 1 to 2, and *Technical verification details* shows the new fingerprint plus the previous one, which is no longer approvable. *Restore redacted version* brings back only the server's redacted text.
+   - **Redact part of a message.** Select words in any card (e.g. "charged twice") and choose *Redact selection*. The words become a hatched "you" marker, which you can click to undo. Selecting into an `[EMAIL]` marker expands to cover all of it. The receipt counts these as *Text redacted by you*.
 4. **Send.** Tick the approval and click *Approve and send*. You get a green *Sent* stamp, the local receiver's acknowledgement ("no external AI model was called") and a receipt where the confirmed hash equals the prepared hash.
 5. **Revoke mid-flight.** Click *Start a new request*, then *Prepare preview*. Before sending, run:
    ```bash
@@ -121,7 +122,7 @@ backend/
 frontend/src/
   api.ts, types.ts   API client and wire types (mirror API_CONTRACT.md)
   labels.ts          Human-readable labels for purposes, destinations, decisions
-  redaction.ts       Display-only parsing of server placeholders ([EMAIL]/[PHONE]) into locked markers
+  redaction.ts       Display-only parsing of server placeholders; selection-to-offset helpers for custom redactions
   App.tsx            App state and flow orchestration
   components/        AccountGate, RequestForm, ManifestReview, ApprovalPanel, OutcomePanel
   index.css          Design tokens and styles
@@ -143,6 +144,7 @@ Where later layers plug in (see the backlog in TEAM_WORKFLOW.md):
 - **Policy fingerprint** covers every policy field, including the allowed-account list. Editing the DB directly without a version bump still invalidates approvals.
 - **Revocation and owner-policy denials checked at send** are recorded as `blocked` with the receipt's `policy_version` reflecting the decision-time policy. Still-permitted changes are recorded as `stale`.
 - **Review** sends the complete set of hidden indices each time (sorted and deduplicated). Sending `[]` includes everything again; mandatory redaction is unaffected either way.
+- **Custom redactions** are offsets (code points) into the mandatory-redacted text, stored in `requests.custom_redactions` (added automatically to older runtime DBs). The UI rebuilds each message from the server's base text plus spans and allows selection only when that reproduces the server's outbound text exactly.
 
 ## Known limits
 
