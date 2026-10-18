@@ -51,12 +51,16 @@ export const api = {
   preview: (token: string, datasetId: string, purpose: string, destination: string) =>
     call<PreviewResponse>('POST', '/requests/preview', token, { dataset_id: datasetId, purpose, destination }),
 
-  /** Replaces the review choices. Offsets only; there is no way to submit message text. */
-  review: (token: string, requestId: string, expectedRevision: number, hide: number[], custom: CustomRedaction[]) =>
+  /**
+   * Replaces the review choices. Offsets only; there is no way to submit message text.
+   * `custom` undefined omits the field, which keeps the stored custom redactions
+   * (and stays compatible with a backend that predates them).
+   */
+  review: (token: string, requestId: string, expectedRevision: number, hide: number[], custom?: CustomRedaction[]) =>
     call<PreviewResponse>('PATCH', `/requests/${encodeURIComponent(requestId)}/review`, token, {
       expected_review_revision: expectedRevision,
       hide_message_indices: hide,
-      custom_redactions: custom,
+      ...(custom === undefined ? {} : { custom_redactions: custom }),
     }),
 
   send: (token: string, requestId: string, expectedRevision: number, previewHash: string) =>

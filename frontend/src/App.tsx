@@ -18,7 +18,8 @@ const FINAL_CODES = new Set(['ACCESS_REVOKED', 'PURPOSE_NOT_ALLOWED', 'DESTINATI
 // Final codes meaning access/owner rules now forbid this request: stop showing its preview.
 const DENIED_CODES = new Set(['ACCESS_REVOKED', 'PURPOSE_NOT_ALLOWED', 'DESTINATION_NOT_ALLOWED', 'SHARING_PROHIBITED'])
 // Review errors where the backend confirms the existing review was left unchanged.
-const REVIEW_UNCHANGED_CODES = new Set(['NO_CONTENT_TO_SEND', 'INVALID_REVIEW'])
+// A 422 is a definite rejection: the server did not apply the change.
+const REVIEW_UNCHANGED_CODES = new Set(['NO_CONTENT_TO_SEND', 'INVALID_REVIEW', 'INVALID_REQUEST'])
 
 /** Approval is bound to one exact draft state; any new revision or hash needs a fresh tick. */
 const approvalKey = (p: PreviewResponse) => `${p.request_id}:${p.review_revision}:${p.preview_hash}`
@@ -119,7 +120,8 @@ export default function App() {
   })
 
   /** Sends a complete review state (hidden indices + custom spans). The server returns the authoritative preview. */
-  const submitReview = async (index: number, hide: number[], custom: CustomRedaction[]) => {
+  /** `custom` undefined keeps the stored custom redactions (the field is omitted). */
+  const submitReview = async (index: number, hide: number[], custom?: CustomRedaction[]) => {
     if (!session || !preview || preview.review_revision === null || busy) return
     const before = preview
     // Withdraw approval before the request leaves, so a failed or slow PATCH never
@@ -161,7 +163,7 @@ export default function App() {
 
   const toggleHidden = (index: number) => {
     if (!preview) return
-    submitReview(index, toggleIndex(preview.hidden_message_indices, index), currentCustom())
+    submitReview(index, toggleIndex(preview.hidden_message_indices, index))
   }
 
   const addCustom = (index: number, span: { start: number; end: number }) => {

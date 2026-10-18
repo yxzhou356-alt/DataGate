@@ -15,7 +15,7 @@ export interface ReviewFailure {
   index: number
   /** The review state that was attempted, for an exact retry. */
   hide: number[]
-  custom: CustomRedaction[]
+  custom?: CustomRedaction[]
 }
 
 interface Props {
@@ -167,6 +167,8 @@ export function ManifestReview({
   const redactions = Object.entries(preview.redaction_counts).filter(([, n]) => n > 0)
   const total = payload.messages.length
   const visible = payload.messages.filter((m) => m !== HIDDEN_MARKER).length
+  // A backend that predates custom redactions omits this field; partial redaction is then unavailable.
+  const supportsCustom = Array.isArray(preview.custom_redactions)
   const custom = preview.custom_redactions ?? []
   const customFor = (i: number) => custom.filter((c) => c.message_index === i)
   const customVisible = custom.filter((c) => !preview.hidden_message_indices.includes(c.message_index)).length
@@ -203,6 +205,9 @@ export function ManifestReview({
           </p>
         </div>
         <p className="summary-help">
+          {editable && !supportsCustom && (
+            <strong className="compat-note">Partial redaction is unavailable: the DataGate backend is older than this page. Restart the backend, then prepare a new preview. </strong>
+          )}
           Automatic detection covers {types.map(redactionLabel).join(' and ') || 'supported identifiers'} only.
           Read each message for other sensitive details. Redact part of a message, or hide the whole message.
         </p>
@@ -249,7 +254,7 @@ export function ManifestReview({
           // reproduces the server's outbound text exactly. Otherwise fall back to read-only text.
           const segments = !hidden && base !== undefined ? buildReviewSegments(base, mine, types) : null
           const verified = segments !== null && renderSegments(segments) === message
-          const canRedact = editable && verified
+          const canRedact = editable && verified && supportsCustom
           const ownerCounts = base !== undefined ? countPlaceholders(base, types) : hidden ? knownRedactions[index] : countPlaceholders(message, types)
           const detected = ownerCounts ? countsText(ownerCounts) : ''
           const sel = selection && !('multi' in selection) && selection.index === index && segments && base !== undefined
@@ -342,7 +347,7 @@ export function ManifestReview({
                   </span>
                 )}
               </div>
-              {editable && !hidden && !verified && (
+              {editable && !hidden && !verified && supportsCustom && (
                 <p className="card-hint">Partial redaction is unavailable for this message. You can still hide it.</p>
               )}
               {editable && lastVisible && (
