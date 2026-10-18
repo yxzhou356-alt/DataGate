@@ -74,7 +74,7 @@ def test_current_and_stale_reports(report_client):
     evidence.atomic_write_json(path, _report(COMMIT_A))
     v = _get(client)
     assert v["availability"] == "available" and v["freshness"] == "current"
-    assert v["report"]["totals"] == {"passed": 14, "failed": 0, "not_run": 0}
+    assert v["report"]["totals"] == {"passed": len(evidence.SCENARIO_IDS), "failed": 0, "not_run": 0}
     evidence.atomic_write_json(path, _report(COMMIT_B))
     assert _get(client)["freshness"] == "stale"
 
@@ -113,7 +113,7 @@ def test_totals_are_recomputed_and_absent_scenarios_shown_as_not_run(report_clie
     data["totals"] = {"passed": 14, "failed": 0, "not_run": 0}  # a lying total is ignored
     evidence.atomic_write_json(path, data)
     r = _get(client)["report"]
-    assert r["totals"] == {"passed": 1, "failed": 1, "not_run": 12}
+    assert r["totals"] == {"passed": 1, "failed": 1, "not_run": len(evidence.SCENARIO_IDS) - 2}
     assert {s["id"] for s in r["scenarios"]} == set(evidence.SCENARIO_IDS)
 
 

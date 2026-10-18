@@ -16,6 +16,7 @@ from typing import Any
 from . import policy as policy_mod
 from . import timeline, transform
 from .errors import ApiError
+from .detectors import PersonDetector
 from .receiver import ReceiverAdapter
 from .storage import Dataset, Policy, Store
 
@@ -35,10 +36,13 @@ def _source_sha(path: Path) -> str | None:
 
 
 class Workflow:
-    def __init__(self, store: Store, sources_dir: Path, receiver: ReceiverAdapter):
+    def __init__(self, store: Store, sources_dir: Path, receiver: ReceiverAdapter,
+                 person_detector: PersonDetector | None = None):
         self.store = store
         self.sources_dir = sources_dir
         self.receiver = receiver
+        # Used only when a policy requires PERSON; replaceable in tests.
+        self.person_detector = person_detector
 
     # ------------------------------------------------------------------ #
     # Datasets
@@ -60,6 +64,7 @@ class Workflow:
                         "allowed_destinations": list(pol.allowed_destinations),
                         "outbound_fields": sorted({f for fs in pol.outbound_fields.values() for f in fs}),
                         "required_redactions": list(pol.required_redactions),
+                        "person_style": pol.person_style,
                         "sharing_mode": pol.sharing_mode,
                         "policy_version": pol.policy_version,
                     },
@@ -111,7 +116,11 @@ class Workflow:
         except transform.SourceInvalid as exc:
             raise ApiError("DATASET_INVALID", message="The source dataset failed validation: " + "; ".join(exc.problems[:5]))
 
-        prepared = transform.prepare(source, purpose, pol.outbound_fields[purpose], pol.required_redactions, [])
+        try:
+            prepared = self._prepare(source, purpose, pol, [], None)
+        except transform.DetectorUnavailable:
+            # Fail closed: no preview, no request, nothing sent.
+            raise ApiError("DETECTOR_UNAVAILABLE")
         decision_label = "redact" if any(prepared.redaction_counts.values()) else "allow"
         self.store.insert_request(
             {
@@ -122,7 +131,7 @@ class Workflow:
                 "dataset_revision": ds.dataset_revision,
                 "source_sha256": source.sha256,
                 "preview_policy_version": pol.policy_version,
-                "preview_policy_fp": policy_mod.fingerprint(pol),
+                "preview_policy_fp": self._freshness(pol),
                 "review_revision": 1,
                 "hidden_indices": [],
                 "redaction_counts": prepared.redaction_counts,
@@ -163,14 +172,19 @@ class Workflow:
             spans = transform.custom_from_wire(req["custom_redactions"])
         else:
             try:
-                base = transform.redacted_messages(source, pol.required_redactions)
+                base = transform.redacted_messages(source, pol.required_redactions, self.person_detector, pol.person_style)
                 spans = transform.normalize_custom(custom, base, pol.required_redactions)
             except transform.CustomRedactionInvalid:
                 raise ApiError("INVALID_REVIEW", request_id)
+            except transform.DetectorUnavailable:
+                self._mark_stale(req, "DETECTOR_UNAVAILABLE")
+                raise ApiError("DETECTOR_UNAVAILABLE", request_id)
 
-        prepared = transform.prepare(
-            source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions, indices, spans
-        )
+        try:
+            prepared = self._prepare(source, req["purpose"], pol, indices, spans)
+        except transform.DetectorUnavailable:
+            self._mark_stale(req, "DETECTOR_UNAVAILABLE")
+            raise ApiError("DETECTOR_UNAVAILABLE", request_id)
         if not transform.has_content(prepared.payload["messages"]):
             raise ApiError("NO_CONTENT_TO_SEND", request_id)
         ok = self.store.update_request_if(
@@ -206,10 +220,13 @@ class Workflow:
         ds, pol, source = self._recheck_current(req)
 
         # Rebuild from backend source + stored choices; never from client content.
-        prepared = transform.prepare(
-            source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions,
-            req["hidden_indices"], transform.custom_from_wire(req["custom_redactions"]),
-        )
+        # A detector failure here must never fall back to unredacted or best-effort content.
+        try:
+            prepared = self._prepare(source, req["purpose"], pol, req["hidden_indices"],
+                                     transform.custom_from_wire(req["custom_redactions"]))
+        except transform.DetectorUnavailable:
+            self._mark_stale(req, "DETECTOR_UNAVAILABLE")
+            raise ApiError("DETECTOR_UNAVAILABLE", request_id)
         if prepared.preview_hash != req["preview_hash"]:
             self._mark_stale(req, "PREVIEW_CHANGED")
             raise ApiError("PREVIEW_CHANGED", request_id)
@@ -350,9 +367,17 @@ class Workflow:
         if ds.dataset_revision != req["dataset_revision"] or current_sha != req["source_sha256"]:
             self._mark_stale(req, "DATASET_CHANGED")
             raise ApiError("DATASET_CHANGED", rid)
-        if pol.policy_version != req["preview_policy_version"] or policy_mod.fingerprint(pol) != req["preview_policy_fp"]:
+        stored_policy_fp, _, stored_pipeline = (req["preview_policy_fp"] or "").partition(".")
+        if pol.policy_version != req["preview_policy_version"] or policy_mod.fingerprint(pol) != stored_policy_fp:
             self._mark_stale(req, "POLICY_CHANGED")
             raise ApiError("POLICY_CHANGED", rid)
+        if transform.pipeline_id(pol.required_redactions, self.person_detector) != stored_pipeline:
+            # Transformation or detector version differs from the one that built the preview.
+            if "PERSON" in pol.required_redactions and self._detector_unavailable():
+                self._mark_stale(req, "DETECTOR_UNAVAILABLE")
+                raise ApiError("DETECTOR_UNAVAILABLE", rid)
+            self._mark_stale(req, "TRANSFORM_CHANGED")
+            raise ApiError("TRANSFORM_CHANGED", rid)
 
         try:
             source = transform.read_source(self.sources_dir / ds.source_file)
@@ -371,6 +396,20 @@ class Workflow:
             {"status": "blocked", "decision": "block", "reason_codes": codes,
              "final_policy_version": policy_version, "occurred_at": _now()},
         )
+
+    def _prepare(self, source: transform.SourceSnapshot, purpose: str, pol: Policy,
+                 hidden: list[int], custom: transform.CustomSpans | None) -> transform.PreparedPayload:
+        return transform.prepare(
+            source, purpose, pol.outbound_fields[purpose], pol.required_redactions, hidden, custom,
+            person_detector=self.person_detector, person_style=pol.person_style,
+        )
+
+    def _freshness(self, pol: Policy) -> str:
+        """Stored with the draft: policy fingerprint + transformation/detector pipeline id."""
+        return f"{policy_mod.fingerprint(pol)}.{transform.pipeline_id(pol.required_redactions, self.person_detector)}"
+
+    def _detector_unavailable(self) -> bool:
+        return self.person_detector is None or getattr(self.person_detector, "version", None) == "unavailable"
 
     def _mark_stale(self, req: dict[str, Any], code: str) -> None:
         self.store.update_request_if(

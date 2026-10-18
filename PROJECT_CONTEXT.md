@@ -75,7 +75,7 @@ Purpose: feedback_summary. A model_training request may be submitted as a blocke
 
 Destination: demo_receiver, a backend-configured identifier. No caller-provided destination URL.
 
-Both sample policies authorize only the corresponding analyst, feedback_summary and demo_receiver, with message as the only outbound field. Supported required redaction types are EMAIL and PHONE.
+Both sample policies authorize only the corresponding analyst, feedback_summary and demo_receiver, with message as the only outbound field. Supported required redaction types are EMAIL and PHONE; PERSON (local name detection, optionally numbered per request) was added as a human-assigned post-baseline layer on Oct 18, 2026 and is off in the default policies. See API_CONTRACT.md §15.
 
 Example:
 Input message: The reset link expired. Please contact emma@example.com.

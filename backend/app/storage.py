@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS policies (
     allowed_destinations TEXT NOT NULL,  -- JSON list
     outbound_fields      TEXT NOT NULL,  -- JSON object purpose -> list of fields
     sharing_mode         TEXT NOT NULL,  -- redacted_only | none
-    required_redactions  TEXT NOT NULL   -- JSON list
+    required_redactions  TEXT NOT NULL,  -- JSON list
+    person_style         TEXT NOT NULL DEFAULT 'generic'  -- generic [PERSON] | numbered [PERSON_n]
 );
 
 CREATE TABLE IF NOT EXISTS grants (
@@ -94,6 +95,7 @@ class Policy:
     outbound_fields: dict[str, list[str]]
     sharing_mode: str
     required_redactions: tuple[str, ...]
+    person_style: str = "generic"
 
 
 @dataclass(frozen=True)
@@ -123,6 +125,9 @@ class Store:
             cols = {r["name"] for r in conn.execute("PRAGMA table_info(requests)")}
             if "custom_redactions" not in cols:
                 conn.execute("ALTER TABLE requests ADD COLUMN custom_redactions TEXT NOT NULL DEFAULT '[]'")
+            policy_cols = {r["name"] for r in conn.execute("PRAGMA table_info(policies)")}
+            if policy_cols and "person_style" not in policy_cols:
+                conn.execute("ALTER TABLE policies ADD COLUMN person_style TEXT NOT NULL DEFAULT 'generic'")
             # Creator-only receipt timeline lookups (skipped for unexpected legacy tables).
             if {"account_id", "status"} <= cols:
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_requests_account_status ON requests(account_id, status)")
@@ -178,6 +183,7 @@ class Store:
             outbound_fields=p["outbound_fields"],
             sharing_mode=p["sharing_mode"],
             required_redactions=tuple(p["required_redactions"]),
+            person_style=p.get("person_style") or "generic",
         )
 
     # ---- owner operations (used by seed + demo_control CLI) -------------

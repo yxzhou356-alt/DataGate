@@ -15,7 +15,7 @@ const STAMPS: Record<string, { label: string; tone: string; text: string }> = {
 }
 
 const REASONS: Record<string, string> = {
-  REDACTION_REQUIRED: 'Email addresses or phone numbers were hidden',
+  REDACTION_REQUIRED: 'Owner rules required redaction before sending',
   PURPOSE_NOT_ALLOWED: 'The owner does not allow this purpose',
   DESTINATION_NOT_ALLOWED: 'The owner does not allow this destination',
   SHARING_PROHIBITED: 'The owner does not allow this dataset to be shared',

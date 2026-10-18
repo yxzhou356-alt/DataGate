@@ -371,6 +371,19 @@ Response 200:
 - Another account's records are never returned. A `dataset_id` the caller never used, or another account's cursor, yields the same empty page as an unknown value, so nothing can be inferred.
 - Metadata only: never message text, payloads, prompts, detected values, redaction spans or mappings, tokens, file names or paths.
 
+## 15. PERSON redaction and numbered pseudonyms (additive)
+
+Coordinated change requested by the human on Oct 18, 2026. Backend schema, frontend types, tests and docs were updated together. The payload template and `schema_version` are unchanged.
+
+- `required_redactions` may include `PERSON` (supported: `EMAIL`, `PHONE`, `PERSON`). The passport (§5) adds `person_style`: `generic` → `[PERSON]`, `numbered` → `[PERSON_1]`, `[PERSON_2]`, …
+- Precedence inside a message: EMAIL > PHONE > PERSON. PERSON spans are trimmed to exclude EMAIL/PHONE ranges, and overlapping PERSON spans merge. Replacement is by offset; no character is transformed twice.
+- Numbering is request-scoped and backend-only: source order over all messages, before hiding, keyed by normalized name (NFC, trimmed, whitespace collapsed, case-folded). The mapping is never stored, returned, logged or put in receipts. `redaction_counts.PERSON` counts replaced spans.
+- Source-authored placeholder-like tokens (`[EMAIL]`, `[PHONE]`, `[PERSON]`, `[PERSON_n]`, `[HIDDEN_BY_USER]`, `[REDACTED_BY_USER]`, any case) are rewritten with parentheses before redaction. Square-bracket tokens in outbound text therefore always come from DataGate.
+- Custom redaction spans (§7.1) may cover a `[PERSON]`/`[PERSON_n]` token completely but may not cut through one.
+- No request field accepts a mapping, pseudonyms or replacement text (unknown fields: 422 INVALID_REQUEST).
+- New errors: `503 DETECTOR_UNAVAILABLE`: PERSON is required but detection failed. Nothing is prepared at preview. At review or send the draft becomes `stale` with that reason and the receiver is not called. `409 TRANSFORM_CHANGED`: the transformation or detector version differs from the one that built the preview. The draft becomes `stale`, with zero receiver calls.
+- Approval freshness now also covers `person_style` (policy fingerprint) and the transformation/detector pipeline id.
+
 ## 12. Future contract changes
 
 Layer tasks preserve v1 by default. Changes to routes, names, states, payload template, database schema or startup behavior require one coordinated update to this file, backend schema, frontend types and tests. No assistant invents a parallel API version independently.

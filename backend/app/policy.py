@@ -13,7 +13,8 @@ from dataclasses import asdict, dataclass
 
 from .storage import Policy
 
-SUPPORTED_REDACTIONS = ("EMAIL", "PHONE")
+SUPPORTED_REDACTIONS = ("EMAIL", "PHONE", "PERSON")
+MANDATORY_BASELINE = ("EMAIL", "PHONE")  # the owner CLI never removes these
 
 
 @dataclass(frozen=True)
@@ -24,10 +25,12 @@ class PolicyDecision:
 
 
 def fingerprint(policy: Policy) -> str:
-    """Internal digest of every policy field, including the account allow-list.
+    """Internal digest of every policy field, including the account allow-list and
+    person_style.
 
     policy_version is bumped for legitimate edits; the fingerprint additionally
-    detects out-of-band edits made without a version bump.
+    detects out-of-band edits made without a version bump. The transformation and
+    detector versions are checked separately (transform.pipeline_id).
     """
     data = asdict(policy)
     data["allowed_accounts"] = sorted(data["allowed_accounts"])

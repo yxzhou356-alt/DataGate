@@ -35,6 +35,9 @@ ERRORS: dict[str, tuple[int, str, str]] = {
     "REQUEST_NOT_READY": (409, "This request is not ready for that action.", "Create a new preview."),
     "RECEIPT_NOT_READY": (409, "No final outcome exists yet for this request.", "Send or finish the request first."),
     "RECEIVER_FAILED": (502, "The receiver did not confirm delivery.", "Create a new reviewed request to try again."),
+    "DETECTOR_UNAVAILABLE": (503, "Required person-name detection is unavailable; nothing was prepared or sent.",
+                             "Try again later or contact the dataset owner."),
+    "TRANSFORM_CHANGED": (409, "The redaction pipeline changed after the preview.", "Create a new preview."),
     "NOT_FOUND": (404, "Route not found.", "Check the API path."),
 }
 

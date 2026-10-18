@@ -65,12 +65,53 @@ Sessions and their tokens live in memory, so after a backend restart the UI will
 ## Verify
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q      # 110 passed
+cd backend && .venv/bin/python -m pytest -q      # 176 passed
 cd frontend && npm run lint && npm run build     # clean lint, build OK
-cd frontend && node --experimental-strip-types --test tests/*.test.ts   # 24 passed; display helpers, no extra deps
+cd frontend && node --experimental-strip-types --test tests/*.test.ts   # 28 passed; display helpers, no extra deps
 ```
 
 Tests use a fresh temporary DB and source copies per test. They never touch `backend/var/`: a conftest guard refuses the runtime data directory and points `DATAGATE_DATA_DIR` at throwaway storage, even if you exported it.
+
+### Person names: local detection and numbered pseudonyms
+
+An owner can require `PERSON` redaction. The default policies do not, and the committed fixtures contain no names. Demo setup:
+
+```bash
+cd backend
+.venv/bin/python -m app.demo_control redactions --dataset feedback_a --types EMAIL,PHONE,PERSON --person-style numbered
+.venv/bin/python -m app.demo_control add-named-row --dataset feedback_a   # appends one synthetic row that mentions people
+```
+
+The next preview turns `Ana asked Liam O'Brien … Liam O'Brien said Ana should email ana.souza@example.com; Dr. Patel will follow up with Ana.` into `[PERSON_1] asked [PERSON_2] … [PERSON_2] said [PERSON_1] should email [EMAIL]; Dr. [PERSON_3] will follow up with [PERSON_1].` Use `--person-style generic` for plain `[PERSON]`. The CLI refuses to drop EMAIL or PHONE.
+
+How it works:
+- **Detector:** `app/detectors.py`, local only, no new dependency. A versioned lexicon-and-context detector: committed given-name list (`app/data/person_given_names.txt`), honorifics, surname extension, organization guard. It sits behind a `PersonDetector` interface (typed spans with code-point offsets and confidence), so a pretrained local NER model can replace it later as a coordinated dependency change.
+- **Precedence:** EMAIL > PHONE > PERSON. A PHONE match inside an email is ignored. PERSON spans are trimmed to exclude EMAIL/PHONE ranges, so no name fragment survives next to an address. Overlapping PERSON spans are merged. Every replacement is by offset, right to left, and each character is replaced at most once.
+- **Numbering (`numbered` style):** decided on the backend in source order over all messages, before hiding, by normalized name (Unicode NFC, trimmed, whitespace collapsed, case-folded). Hiding a message never renumbers later people. The mapping exists only in memory while a payload is built, and is rebuilt identically at preview, review and send. It is never stored, logged, returned or put in receipts.
+- **Token collisions:** placeholder-like strings already in the source (`[PERSON_1]`, `[EMAIL]`, …, any case) are rewritten to `(PERSON_1)` first, so square-bracket tokens in outbound text only ever come from DataGate.
+- **Fail closed:** if a policy requires PERSON and the detector is missing, errors or returns invalid offsets, preview/review/send return `503 DETECTOR_UNAVAILABLE` and nothing is prepared or sent. Datasets without PERSON are unaffected. Demo: start the backend with `DATAGATE_PERSON_DETECTOR=unavailable`.
+- **Freshness:** the draft stores the policy fingerprint (which includes `person_style`) plus a pipeline id (transformation version + detector version, which includes a hash of the lexicon). A change to either makes the approval stale (`POLICY_CHANGED` / `TRANSFORM_CHANGED`). A detector that returns different output on rebuild is caught by the payload-hash comparison (`PREVIEW_CHANGED`). Nothing best-effort is ever sent.
+
+Evaluation (synthetic, limited):
+
+```bash
+cd backend && .venv/bin/python -m app.person_eval --show-errors
+```
+
+Actual result on the committed set (`backend/eval/person_eval.jsonl`: 70 synthetic messages, 63 gold spans), detector `lexicon-1.2`, run Oct 18, 2026:
+
+| Match | Precision | Recall | F1 | tp / fp / fn |
+| --- | --- | --- | --- | --- |
+| Exact span | 0.980 | 0.778 | 0.867 | 49 / 1 / 14 |
+| Overlap | 1.000 | 0.794 | 0.885 | 50 / 0 / 13 |
+
+Misses are names absent from the lexicon (5 of 5 unseen names), non-Latin scripts, initials, a lowercase surname, an unknown particle name, and ambiguous names such as "Grace" or "Jordan" without a surname. The set was written by the same team as the detector, and one particle bug was fixed after seeing it, so treat it as a development set. These numbers describe this set only. They are not a real-world accuracy claim, and no result proves a message contains no personal data.
+
+What pseudonymization does and does not do:
+- It reduces exposure while keeping "who said what to whom" for summarization. It is not anonymization, not reversible, and not proof that all PII is gone.
+- Two different people with the same name share a number.
+- "Emma" and "Emma Lawson" get different numbers, and so do initials or nicknames. There is no coreference or alias resolution.
+- Numbers are per request, derived from that source's order. There is no global person table, though the same unchanged source produces the same numbers.
 
 ### Security evidence dashboard
 
@@ -81,7 +122,7 @@ cd backend && .venv/bin/python -m app.security_report
 ```
 
 It writes `backend/var/reports/security-report.json` (git-ignored) atomically and prints the totals. Exit codes:
-- 0: all 14 scenarios passed.
+- 0: all 15 scenarios passed.
 - 1: a scenario failed.
 - 2: incomplete (a scenario was not run, or the run was interrupted or errored).
 - 3: another generation is already running.
@@ -92,7 +133,7 @@ Override the path with `--out` or `DATAGATE_REPORT_PATH`; the backend reads the 
 View it: start the backend and frontend as above, then open http://127.0.0.1:5173/#evidence. You can also use *View the security test evidence* on the sign-in page, or *Security evidence* in the top bar. The page reads `GET /api/evidence/security-report`. That endpoint only reads the file: it never runs tests or touches the demo DB.
 
 What the dashboard shows:
-- **Totals:** 14 scenarios (SEC-01 … SEC-14), each `passed`, `failed` or `not_run`. A scenario passes only if every test mapped to it with `@pytest.mark.scenario("SEC-xx")` ran and passed.
+- **Totals:** 15 scenarios (SEC-01 … SEC-15), each `passed`, `failed` or `not_run`. A scenario passes only if every test mapped to it with `@pytest.mark.scenario("SEC-xx")` ran and passed.
 - **Labels:** *Missing*, *Unusable* (malformed, unsupported schema, or prohibited content), *Failed*, *Partial* (not run, interrupted or error), *Stale* (generated for another commit), *Commit unknown* (no Git), *Uncommitted changes* and *Demo DB changed*.
 - **Run metadata:** generation time and commit, run status, test counts, isolation details, and whether the runtime demo DB was unchanged.
 
@@ -130,6 +171,7 @@ Keep a third terminal in `backend/` with the venv active for the owner controls.
 Other owner controls:
 - `python -m app.demo_control sharing --dataset feedback_a --mode none` (then `--mode redacted_only` to restore)
 - `python -m app.demo_control edit-source --dataset feedback_a` (appends a synthetic row and bumps the dataset revision)
+- `python -m app.demo_control redactions --dataset feedback_a --types EMAIL,PHONE,PERSON [--person-style numbered]` and `add-named-row --dataset feedback_a` (see *Person names* above)
 - `python -m app.demo_control status`
 
 Failure demo: start the backend with `DATAGATE_RECEIVER=fail`. Send then returns *Not confirmed*, with 1 receiver call recorded and no confirmed hash.
@@ -152,6 +194,8 @@ backend/
     receiver.py      ReceiverAdapter protocol; LocalCapturingReceiver; FailingReceiver; build_receiver()
     workflow.py      preview / review / send / receipt state machine and send-time rechecks; list_receipts()
     timeline.py      Receipt timeline query validation (filters, limit) and opaque keyset cursors
+    detectors.py     PersonDetector interface, validation/chunking, local LexiconPersonDetector (data/person_given_names.txt)
+    person_eval.py   `python -m app.person_eval`: precision/recall/F1 on eval/person_eval.jsonl (synthetic)
     auth.py          Demo sessions (in-memory tokens) + current_account dependency
     schemas.py       Request bodies (extra fields rejected)
     main.py          create_app(): routes only, thin layer over Workflow
@@ -192,7 +236,7 @@ Where later layers plug in (see the backlog in TEAM_WORKFLOW.md):
 ## Known limits
 
 - Demo sign-in is simulated authentication, not production login. Anyone running the app can pick either account.
-- Detection covers emails and North-American 10-digit phone formats only. Names, addresses, health details and other secrets inside messages are **not** detected. The synthetic fixture messages deliberately contain no names.
+- Detection covers emails and North-American 10-digit phone formats, plus person names when an owner requires PERSON. The name detector is lexicon-based: see its measured limits above. Addresses, health details and other secrets inside messages are **not** detected. The committed fixture messages contain no names; `add-named-row` appends synthetic ones for demos.
 - CSV validation currently accepts an unclosed quoted field and may merge later records. This needs a bounded backend fix before claiming the no-silent-repair requirement is fully met; see B1 in [the review](BASELINE_UX_REVIEW.md).
 - Analyst approval is not customer consent. Receipts and hashes are evidence of this gateway's actions, not proof of privacy or recipient behavior.
 - Revocation applies at the next protected step. It cannot recall content already sent, and it isn't distributed or atomic across services.

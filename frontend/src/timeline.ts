@@ -37,12 +37,16 @@ export const REASON_TEXT: Record<string, string> = {
   DATASET_CHANGED: 'Source data changed after the preview',
   POLICY_CHANGED: 'Owner policy changed after the preview',
   PREVIEW_CHANGED: 'Prepared content changed after review',
+  TRANSFORM_CHANGED: 'Redaction pipeline changed after the preview',
+  DETECTOR_UNAVAILABLE: 'Required person-name detection was unavailable',
 }
 
 /** "2 email addresses, 1 phone number removed · 1 message hidden · 2 text redactions by you" */
 export function redactionSummary(r: Pick<Receipt, 'redaction_counts' | 'additional_hidden_messages' | 'additional_custom_redactions' | 'review_revision'>): string {
   if (r.review_revision === null) return 'Not scanned: blocked before a preview was prepared'
-  const words: Record<string, [string, string]> = { EMAIL: ['email address', 'email addresses'], PHONE: ['phone number', 'phone numbers'] }
+  const words: Record<string, [string, string]> = {
+    EMAIL: ['email address', 'email addresses'], PHONE: ['phone number', 'phone numbers'], PERSON: ['person name', 'person names'],
+  }
   const auto = Object.entries(r.redaction_counts)
     .filter(([, n]) => n > 0)
     .map(([t, n]) => `${n} ${(words[t] ?? [t, t])[n === 1 ? 0 : 1]}`)

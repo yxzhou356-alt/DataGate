@@ -62,7 +62,8 @@ These are options, not instructions to implement all of them.
 | L8 | Creator-only receipt timeline | IMPLEMENTED on `feature` (human request, Oct 18; Claude): `GET /api/receipts` + `#history` view; review pending | Creator-only, metadata-only, paginated; existing receipt route unchanged |
 | L3 | Input quality | UNASSIGNED | Duplicate-ticket and clear row-level errors; no silent data removal |
 | L4 | One real receiver/provider | UNASSIGNED | Only approved canonical content reaches assigned provider; honest failures; regression suite preserved |
-| L5 | Person-name detector/evaluation | UNASSIGNED | Local pretrained detector plus labeled baseline comparison; measured limitations |
+| L5 | Person-name detector/evaluation | IMPLEMENTED on `feature` (human request, Oct 18; Claude): local lexicon detector behind a detector interface + synthetic labeled evaluation (no pretrained model; no new dependency); review pending | Local pretrained detector plus labeled baseline comparison; measured limitations |
+| L9 | Context-preserving pseudonymization | IMPLEMENTED on `feature` (human request, Oct 18; Claude): request-scoped `[PERSON_n]`, owner `person_style`; review pending | Backend-only deterministic mapping; stale on source/policy/detector change; no mapping persisted |
 | L6 | Receipt integrity | UNASSIGNED | Append-only chain, verifier and separately retained checkpoint; limited claims |
 | L7 | Demo/docs/reliability | UNASSIGNED | Another laptop runs it; four-minute script; backup recording; submission materials |
 

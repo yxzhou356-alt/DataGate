@@ -27,6 +27,7 @@ class Settings:
     receiver_mode: str = "local_demo"  # "local_demo" or "fail" (local failing receiver)
     session_ttl_seconds: int = 8 * 60 * 60
     report_path: Path = DEFAULT_REPORT_PATH
+    person_detector: str = "lexicon"  # "lexicon" (local default) or "unavailable" (fail-closed demo)
 
     @property
     def db_path(self) -> Path:
@@ -40,7 +41,8 @@ class Settings:
 def settings_from_env() -> Settings:
     data_dir = Path(os.environ.get("DATAGATE_DATA_DIR", str(DEFAULT_DATA_DIR))).resolve()
     receiver_mode = os.environ.get("DATAGATE_RECEIVER", "local_demo")
-    return Settings(data_dir=data_dir, receiver_mode=receiver_mode, report_path=report_path_from_env())
+    return Settings(data_dir=data_dir, receiver_mode=receiver_mode, report_path=report_path_from_env(),
+                    person_detector=os.environ.get("DATAGATE_PERSON_DETECTOR", "lexicon"))
 
 
 def report_path_from_env() -> Path:

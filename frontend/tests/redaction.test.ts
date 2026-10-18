@@ -114,3 +114,40 @@ test('selecting text already inside a custom span requests nothing', () => {
   // Extending past it is allowed; the server merges the overlap.
   assert.deepEqual(snapSelection(BASE, segs, 2, 12), { start: 0, end: 12 })
 })
+
+// ----------------------------------------------------------- PERSON placeholders --
+const PTYPES = placeholderTypes(['EMAIL', 'PHONE', 'PERSON'])
+
+test('numbered PERSON placeholders parse with their ordinal, including multi-digit', () => {
+  const text = '[PERSON_1] met [PERSON_12] and [PERSON] at [EMAIL]'
+  const segs = segmentMessage(text, PTYPES)
+  assert.deepEqual(segs.filter((s) => s.kind === 'redaction'), [
+    { kind: 'redaction', type: 'PERSON', ordinal: 1 },
+    { kind: 'redaction', type: 'PERSON', ordinal: 12 },
+    { kind: 'redaction', type: 'PERSON' },
+    { kind: 'redaction', type: 'EMAIL' },
+  ])
+  assert.deepEqual(countPlaceholders(text, PTYPES), { PERSON: 3, EMAIL: 1 })
+})
+
+test('escaped source tokens and malformed numbers stay plain text', () => {
+  for (const text of ['(PERSON_1) wrote', '[PERSON_0] wrote', '[PERSON_] wrote', '[person_1] wrote']) {
+    assert.deepEqual(segmentMessage(text, PTYPES), [{ kind: 'text', text }])
+  }
+})
+
+test('numbered placeholders round-trip through review segments with custom spans', () => {
+  const base = '[PERSON_1] asked [PERSON_2] to check 😀 the export.'
+  const at = base.indexOf('check')
+  const span = { start: unitToCp(base, at), end: unitToCp(base, at + 5) }
+  const segs = buildReviewSegments(base, [span], PTYPES)
+  assert.equal(renderSegments(segs), `[PERSON_1] asked [PERSON_2] to ${CUSTOM_MARKER} 😀 the export.`)
+  for (const s of segs) if (s.kind === 'text') assert.equal(base.slice(s.start, s.end), s.text)
+})
+
+test('a selection starting inside [PERSON_2] expands to the whole placeholder', () => {
+  const base = '[PERSON_1] asked [PERSON_2] to check.'
+  const segs = buildReviewSegments(base, [], PTYPES)
+  const p2 = base.indexOf('[PERSON_2]')
+  assert.deepEqual(snapSelection(base, segs, p2 + 4, base.indexOf(' to')), { start: p2, end: p2 + 10 })
+})

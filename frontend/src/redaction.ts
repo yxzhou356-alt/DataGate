@@ -4,9 +4,15 @@
 
 export const HIDDEN_MARKER = '[HIDDEN_BY_USER]'
 
+/** `ordinal` is set for numbered PERSON placeholders: [PERSON_3] -> type 'PERSON', ordinal 3. */
 export type Segment =
   | { kind: 'text'; text: string }
-  | { kind: 'redaction'; type: string }
+  | { kind: 'redaction'; type: string; ordinal?: number }
+
+/** The exact server token a redaction segment stands for. */
+export function placeholderToken(s: { type: string; ordinal?: number }): string {
+  return `[${s.type}${s.ordinal ? `_${s.ordinal}` : ''}]`
+}
 
 /**
  * Placeholder types to recognise, taken from the server's own preview fields
@@ -19,16 +25,18 @@ export function placeholderTypes(types: Iterable<string>): string[] {
   return [...out].sort()
 }
 
-/** Splits a server-issued message into plain text and `[TYPE]` placeholder segments. */
+/** Splits a server-issued message into plain text and `[TYPE]` / `[PERSON_n]` placeholder segments. */
 export function segmentMessage(text: string, types: readonly string[]): Segment[] {
   if (types.length === 0) return text ? [{ kind: 'text', text }] : []
-  const pattern = new RegExp(`\\[(${types.join('|')})\\]`, 'g')
+  const alternatives = types.map((t) => (t === 'PERSON' ? 'PERSON(?:_[1-9]\\d{0,5})?' : t))
+  const pattern = new RegExp(`\\[(${alternatives.join('|')})\\]`, 'g')
   const segments: Segment[] = []
   let last = 0
   for (const match of text.matchAll(pattern)) {
     const at = match.index ?? 0
     if (at > last) segments.push({ kind: 'text', text: text.slice(last, at) })
-    segments.push({ kind: 'redaction', type: match[1] })
+    const numbered = /^PERSON_(\d+)$/.exec(match[1])
+    segments.push(numbered ? { kind: 'redaction', type: 'PERSON', ordinal: Number(numbered[1]) } : { kind: 'redaction', type: match[1] })
     last = at + match[0].length
   }
   if (last < text.length) segments.push({ kind: 'text', text: text.slice(last) })
@@ -69,7 +77,7 @@ export interface CpSpan { start: number; end: number }
 
 export type ReviewSegment =
   | { kind: 'text'; text: string; start: number; end: number }
-  | { kind: 'redaction'; type: string; start: number; end: number }
+  | { kind: 'redaction'; type: string; ordinal?: number; start: number; end: number }
   | { kind: 'custom'; start: number; end: number; cpStart: number; cpEnd: number }
 
 const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff
@@ -97,7 +105,7 @@ export function buildReviewSegments(base: string, spans: readonly CpSpan[], type
   const plain = (from: number, to: number) => {
     let at = from
     for (const s of segmentMessage(base.slice(from, to), types)) {
-      const len = s.kind === 'text' ? s.text.length : s.type.length + 2
+      const len = s.kind === 'text' ? s.text.length : placeholderToken(s).length
       out.push({ ...s, start: at, end: at + len })
       at += len
     }
@@ -118,7 +126,7 @@ export function buildReviewSegments(base: string, spans: readonly CpSpan[], type
 
 /** The outbound text these segments stand for; compared with the server's text before editing is allowed. */
 export function renderSegments(segments: readonly ReviewSegment[]): string {
-  return segments.map((s) => (s.kind === 'text' ? s.text : s.kind === 'redaction' ? `[${s.type}]` : CUSTOM_MARKER)).join('')
+  return segments.map((s) => (s.kind === 'text' ? s.text : s.kind === 'redaction' ? placeholderToken(s) : CUSTOM_MARKER)).join('')
 }
 
 /**

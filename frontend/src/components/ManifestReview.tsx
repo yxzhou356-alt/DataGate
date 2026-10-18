@@ -43,11 +43,13 @@ interface Props {
 type RawSelection = { hash: string | null; index: number; start: number; end: number } | { hash: string | null; multi: true }
 
 /** A server-issued owner placeholder as a locked bar. Text is rendered as React text nodes only. */
-function RedactionMarker({ type, seg }: { type: string; seg?: ReviewSegment }) {
+function RedactionMarker({ type, ordinal, seg }: { type: string; ordinal?: number; seg?: ReviewSegment }) {
+  // Numbered people read as "person 1": the same number means the same name within this request.
+  const label = `${redactionShortLabel(type)}${ordinal ? ` ${ordinal}` : ''}`
   return (
-    <span className="redaction" title={`${redactionShortLabel(type)} removed — required by owner policy`} {...segData(seg)}>
-      <span className="redaction-label" aria-hidden="true">{redactionShortLabel(type)}</span>
-      <span className="sr-only">[{redactionShortLabel(type)} removed, required by owner policy]</span>
+    <span className="redaction" title={`${label} removed — required by owner policy`} {...segData(seg)}>
+      <span className="redaction-label" aria-hidden="true">{label}</span>
+      <span className="sr-only">[{label} removed, required by owner policy]</span>
     </span>
   )
 }
@@ -61,7 +63,7 @@ function MessageText({ text, types }: { text: string; types: string[] }) {
   return (
     <>
       {segmentMessage(text, types).map((s, i) =>
-        s.kind === 'redaction' ? <RedactionMarker key={i} type={s.type} /> : <span key={i}>{s.text}</span>,
+        s.kind === 'redaction' ? <RedactionMarker key={i} type={s.type} ordinal={s.ordinal} /> : <span key={i}>{s.text}</span>,
       )}
     </>
   )
@@ -75,7 +77,7 @@ function ReviewText({ segments, editable, busy, index, onRemove }: {
     <>
       {segments.map((s) => {
         if (s.kind === 'text') return <span key={s.start} {...segData(s)}>{s.text}</span>
-        if (s.kind === 'redaction') return <RedactionMarker key={s.start} type={s.type} seg={s} />
+        if (s.kind === 'redaction') return <RedactionMarker key={s.start} type={s.type} ordinal={s.ordinal} seg={s} />
         const label = <span className="redaction-label" aria-hidden="true">you</span>
         return editable ? (
           <button
@@ -320,7 +322,7 @@ export function ManifestReview({
                     : <>
                         {detected
                           ? <><span className="lock" aria-hidden="true" />{detected} removed · required by owner policy</>
-                          : 'No email or phone detected'}
+                          : 'Nothing found by owner rules'}
                         {mine.length > 0 && <>&nbsp;· {mine.length} redacted by you</>}
                       </>}
                 </p>

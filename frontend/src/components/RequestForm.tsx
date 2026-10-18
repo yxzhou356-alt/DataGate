@@ -56,7 +56,9 @@ export function RequestForm({ datasets, datasetId, purpose, destination, busy, o
             <div><dt>Approved use</dt><dd>{selected.passport.allowed_purposes.map(purposeLabel).join(', ')}</dd></div>
             <div><dt>Approved receiver</dt><dd>{selected.passport.allowed_destinations.map(destinationLabel).join(', ')}</dd></div>
             <div><dt>Content allowed to leave</dt><dd>{selected.passport.outbound_fields.map(outboundFieldLabel).join(', ')}</dd></div>
-            <div><dt>Automatically removed</dt><dd>{selected.passport.required_redactions.map(redactionLabel).join(', ')}</dd></div>
+            <div><dt>Automatically removed</dt><dd>{selected.passport.required_redactions.map((t) =>
+              t === 'PERSON' && selected.passport.person_style === 'numbered' ? 'person names (numbered per request)' : redactionLabel(t),
+            ).join(', ')}</dd></div>
             <div><dt>Sharing rule</dt><dd>{selected.passport.sharing_mode === 'none' ? 'Do not share' : 'Only after required redaction'}</dd></div>
           </dl>
           <details className="technical-details technical-details-compact">

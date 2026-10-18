@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import SessionStore, current_account
 from .config import Settings, settings_from_env
+from .detectors import PersonDetector, build_person_detector
 from .errors import ApiError, install_error_handlers
 from .evidence import read_report_view
 from .receiver import ReceiverAdapter, build_receiver
@@ -18,7 +19,8 @@ from .seed import seed
 from .workflow import Workflow
 
 
-def create_app(settings: Settings | None = None, receiver: ReceiverAdapter | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, receiver: ReceiverAdapter | None = None,
+               person_detector: PersonDetector | None = None) -> FastAPI:
     settings = settings or settings_from_env()
     store = seed(settings)  # idempotent: seeds an empty DB, never overwrites owner edits
     receiver = receiver or build_receiver(settings.receiver_mode)
@@ -28,7 +30,8 @@ def create_app(settings: Settings | None = None, receiver: ReceiverAdapter | Non
     app.state.store = store
     app.state.sessions = SessionStore(settings.session_ttl_seconds)
     app.state.receiver = receiver
-    app.state.workflow = Workflow(store, settings.sources_dir, receiver)
+    person_detector = person_detector or build_person_detector(settings.person_detector)
+    app.state.workflow = Workflow(store, settings.sources_dir, receiver, person_detector)
     install_error_handlers(app)
     app.add_middleware(
         CORSMiddleware,

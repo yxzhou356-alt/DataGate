@@ -20,7 +20,8 @@ function viewFromHash(): View {
 interface Notice { code: string; message: string; action: string; needsNewPreview: boolean }
 
 // Errors after which the current draft can never be sent; a fresh preview is needed.
-const STALE_CODES = new Set(['DATASET_CHANGED', 'POLICY_CHANGED', 'PREVIEW_CHANGED', 'REQUEST_NOT_READY', 'REVIEW_CHANGED'])
+const STALE_CODES = new Set(['DATASET_CHANGED', 'POLICY_CHANGED', 'PREVIEW_CHANGED', 'REQUEST_NOT_READY', 'REVIEW_CHANGED',
+  'TRANSFORM_CHANGED', 'DETECTOR_UNAVAILABLE'])
 // Errors whose final outcome is recorded in a receipt we can show.
 const FINAL_CODES = new Set(['ACCESS_REVOKED', 'PURPOSE_NOT_ALLOWED', 'DESTINATION_NOT_ALLOWED', 'SHARING_PROHIBITED', 'RECEIVER_FAILED', 'ALREADY_DISPATCHED'])
 // Final codes meaning access/owner rules now forbid this request: stop showing its preview.

@@ -20,16 +20,16 @@ export function destinationLabel(id: string): string {
 }
 
 export function redactionLabel(type: string): string {
-  return ({ EMAIL: 'email addresses', PHONE: 'phone numbers' } as Record<string, string>)[type] ?? type
+  return ({ EMAIL: 'email addresses', PHONE: 'phone numbers', PERSON: 'person names' } as Record<string, string>)[type] ?? type
 }
 
 /** Short word shown inside a redaction marker. */
 export function redactionShortLabel(type: string): string {
-  return ({ EMAIL: 'email', PHONE: 'phone' } as Record<string, string>)[type] ?? type.toLowerCase()
+  return ({ EMAIL: 'email', PHONE: 'phone', PERSON: 'person' } as Record<string, string>)[type] ?? type.toLowerCase()
 }
 
 export function redactionCountLabel(type: string, count: number): string {
-  const singular = ({ EMAIL: 'email address', PHONE: 'phone number' } as Record<string, string>)[type] ?? type
+  const singular = ({ EMAIL: 'email address', PHONE: 'phone number', PERSON: 'person name' } as Record<string, string>)[type] ?? type
   return `${count} ${count === 1 ? singular : redactionLabel(type)}`
 }
 

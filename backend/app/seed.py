@@ -53,7 +53,8 @@ def seed(settings: Settings, reset: bool = False) -> Store:
                 shutil.copyfile(settings.fixtures_dir / source_file, target)
             conn.execute("INSERT INTO datasets VALUES (?, ?, ?, ?, 1)", (dataset_id, name, owner, source_file))
             conn.execute(
-                "INSERT INTO policies VALUES (?, 1, ?, ?, ?, ?, ?)",
+                "INSERT INTO policies (dataset_id, policy_version, allowed_purposes, allowed_destinations, "
+                "outbound_fields, sharing_mode, required_redactions) VALUES (?, 1, ?, ?, ?, ?, ?)",
                 (
                     dataset_id,
                     json.dumps(DEFAULT_POLICY["allowed_purposes"]),

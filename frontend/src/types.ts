@@ -23,6 +23,8 @@ export interface Passport {
   required_redactions: string[]
   sharing_mode: 'redacted_only' | 'none'
   policy_version: number
+  /** How PERSON is replaced when required: [PERSON] or request-scoped [PERSON_1], [PERSON_2], ... */
+  person_style?: 'generic' | 'numbered'
 }
 
 export interface DatasetSummary {

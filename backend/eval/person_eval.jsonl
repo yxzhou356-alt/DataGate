@@ -1,0 +1,70 @@
+{"id": "p01", "category": "given_name", "text": "{Emma} reported that the export button is greyed out."}
+{"id": "p02", "category": "given_name", "text": "Please ask {Liam} whether the refund went through."}
+{"id": "p03", "category": "full_name", "text": "{Sarah Chen} could not log in after the update."}
+{"id": "p04", "category": "full_name", "text": "The ticket was opened by {David Okafor} on behalf of the team."}
+{"id": "p05", "category": "repeated", "text": "{Emma} reported a problem. {Emma} called again the next day."}
+{"id": "p06", "category": "repeated", "text": "{Emma} contacted {Liam}. {Liam} replied to {Emma} within an hour."}
+{"id": "p07", "category": "case", "text": "{emma} says the sync is broken again."}
+{"id": "p08", "category": "case", "text": "Spoke with {LIAM} about the outage."}
+{"id": "p09", "category": "hyphen_apostrophe", "text": "{Liam O'Brien} wants the invoice resent."}
+{"id": "p10", "category": "hyphen_apostrophe", "text": "{Anne-Marie} could not reset her password."}
+{"id": "p11", "category": "hyphen_apostrophe", "text": "{Sophie Martin-Lopez} reported slow reports."}
+{"id": "p12", "category": "hyphen_apostrophe", "text": "Account owner {Mary-Jane Watson} asked for a callback."}
+{"id": "p13", "category": "accented", "text": "{Chloé Dubois} says shared links expire too fast."}
+{"id": "p14", "category": "accented", "text": "{José García} needs the March invoice."}
+{"id": "p15", "category": "accented", "text": "{Søren Kierkegaard} cannot export to PDF."}
+{"id": "p16", "category": "accented", "text": "Customer {Łukasz} reported a crash on startup."}
+{"id": "p17", "category": "accented", "text": "{Zoë} said the app froze twice."}
+{"id": "p18", "category": "non_latin", "text": "{王伟} reported that search is slow."}
+{"id": "p19", "category": "non_latin", "text": "Message from {Дмитрий} about billing."}
+{"id": "p20", "category": "honorific", "text": "Dr. {Patel} asked for an audit log export."}
+{"id": "p21", "category": "honorific", "text": "Please forward this to Ms {O'Neil} in finance."}
+{"id": "p22", "category": "honorific", "text": "Mr. {Nakamura} cannot see last week's data."}
+{"id": "p23", "category": "honorific", "text": "Prof. {Adeyemi} requested a bulk export."}
+{"id": "p24", "category": "single_token", "text": "Thanks, {Priya}!"}
+{"id": "p25", "category": "single_token", "text": "{Omar}: the dashboard is blank."}
+{"id": "p26", "category": "punctuation", "text": "Can you call ({Hannah}) back today?"}
+{"id": "p27", "category": "punctuation", "text": "\"{Noah},\" the note said, \"is waiting for a reply.\""}
+{"id": "p28", "category": "punctuation", "text": "Escalated by {Isabella}; see the thread."}
+{"id": "p29", "category": "possessive", "text": "{Emma}'s laptop keeps logging out."}
+{"id": "p30", "category": "possessive", "text": "We fixed {Jonathan Reyes}'s billing address."}
+{"id": "p31", "category": "multiple", "text": "{Ann} spoke with {Anna} about the duplicate charge."}
+{"id": "p32", "category": "multiple", "text": "{Maria Silva}, {Ahmed Khan} and {Yuki Tanaka} all saw the error."}
+{"id": "p33", "category": "multiple", "text": "Hand-off from {Carlos} to {Fatima}, then to {Wei}."}
+{"id": "p34", "category": "ambiguous_name", "text": "{Grace Turner} asked about the renewal date."}
+{"id": "p35", "category": "ambiguous_name", "text": "{Will Smith} cannot download the report."}
+{"id": "p36", "category": "ambiguous_name", "text": "{Grace} called to say the issue is fixed."}
+{"id": "p37", "category": "ambiguous_name", "text": "Reported by {Jordan} after the release."}
+{"id": "p38", "category": "ambiguous_word", "text": "I will check whether the patch is live in May."}
+{"id": "p39", "category": "ambiguous_word", "text": "We hope the fix ships in June; mark this as urgent."}
+{"id": "p40", "category": "ambiguous_word", "text": "Grace period for the invoice ended on Friday."}
+{"id": "p41", "category": "unseen_name", "text": "{Oluwaseun} reported that uploads stall."}
+{"id": "p42", "category": "unseen_name", "text": "{Thandiwe Mokoena} asked for an invoice copy."}
+{"id": "p43", "category": "unseen_name", "text": "{Xochitl} says the mobile app crashes."}
+{"id": "p44", "category": "unseen_name", "text": "{Bartholomew} needs admin access."}
+{"id": "p45", "category": "unseen_name", "text": "Our contact {Siobhan Kelly} is on leave."}
+{"id": "p46", "category": "organization", "text": "Morgan Stanley users cannot sign in with SSO."}
+{"id": "p47", "category": "organization", "text": "Johnson & Johnson asked for a data export."}
+{"id": "p48", "category": "organization", "text": "The Ford Motor account renews in April."}
+{"id": "p49", "category": "organization", "text": "Victoria Bank reported failed webhooks."}
+{"id": "p50", "category": "organization", "text": "Tickets from Paris Labs are delayed."}
+{"id": "p51", "category": "organization", "text": "Alexa integration stopped responding."}
+{"id": "p52", "category": "capitalized_word", "text": "The Export Settings page shows Error 500."}
+{"id": "p53", "category": "capitalized_word", "text": "Billing Team says the Annual Plan renewal failed."}
+{"id": "p54", "category": "capitalized_word", "text": "Monday Morning Sync is missing from the Calendar view."}
+{"id": "p55", "category": "capitalized_word", "text": "Dashboard Charts load slowly on Android 15."}
+{"id": "p56", "category": "no_name", "text": "The reset link expired before I could use it."}
+{"id": "p57", "category": "no_name", "text": "Invoice PDF shows the wrong company address."}
+{"id": "p58", "category": "no_name", "text": "Two-factor codes arrive late on weekends."}
+{"id": "p59", "category": "context_email", "text": "{Emma Lawson} wrote from a new address and wants a reply."}
+{"id": "p60", "category": "context_email", "text": "Forward to {Noah} (billing) and copy the support inbox."}
+{"id": "p61", "category": "sentence_start", "text": "{Olivia} and the finance team need the March invoice."}
+{"id": "p62", "category": "sentence_start", "text": "Hi {Daniel}, the export works now."}
+{"id": "p63", "category": "particles", "text": "{Ludwig van Beethoven} requested a refund."}
+{"id": "p64", "category": "particles", "text": "{Maria de la Cruz} reported duplicate charges."}
+{"id": "p65", "category": "initials", "text": "{J. Smith} says the PDF is blank."}
+{"id": "p66", "category": "initials", "text": "{A.K.} asked for the logs."}
+{"id": "p67", "category": "lowercase", "text": "my manager {sarah} keeps getting locked out."}
+{"id": "p68", "category": "lowercase", "text": "ask {david lee} about the api key rotation."}
+{"id": "p69", "category": "long_message", "text": "The nightly export failed again. We retried three times, cleared the cache, rotated the token and checked the network logs, but the job still stops at the same step after about forty minutes. {Rebecca} from operations confirmed the same behaviour on the staging environment, and {Thomas Weber} saw it in production as well."}
+{"id": "p70", "category": "brand_like", "text": "Siri shortcuts no longer open the app."}

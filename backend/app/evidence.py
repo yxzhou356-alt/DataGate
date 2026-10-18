@@ -63,6 +63,8 @@ SCENARIOS: tuple[tuple[str, str, str], ...] = (
      "A failing receiver yields send_failed with one recorded attempt, no confirmed hash and no resend."),
     ("SEC-14", "Receipts contain no prohibited content",
      "Receipts hold metadata only: no messages, identifiers, prompts, tokens or file names; creator-only."),
+    ("SEC-15", "Required PERSON detection fails closed",
+     "If the policy requires PERSON redaction and the detector fails, preview, review and send prepare or dispatch nothing."),
 )
 SCENARIO_IDS = tuple(s[0] for s in SCENARIOS)
 
