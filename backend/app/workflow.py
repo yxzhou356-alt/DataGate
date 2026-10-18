@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from . import policy as policy_mod
-from . import transform
+from . import timeline, transform
 from .errors import ApiError
 from .receiver import ReceiverAdapter
 from .storage import Dataset, Policy, Store
@@ -274,6 +274,24 @@ class Workflow:
             raise ApiError("REQUEST_ACCESS_DENIED", request_id)
         if req["status"] not in FINAL_STATUSES:
             raise ApiError("RECEIPT_NOT_READY", request_id)
+        return self._receipt(req)
+
+    def list_receipts(self, account_id: str, query_params: list[tuple[str, str]]) -> dict:
+        """Creator-only timeline of outcome metadata. The account always comes from the token.
+
+        Not gated on current dataset access, like the single receipt: a revoked creator can
+        still read their own history. Items use the single-receipt shape plus recorded_at.
+        """
+        q = timeline.parse_query(query_params)
+        rows = self.store.list_timeline(account_id, q)
+        page = rows[: q.limit]
+        items = [{**self._receipt(r), "recorded_at": r["recorded_at"]} for r in page]
+        next_cursor = (timeline.encode_cursor(page[-1]["recorded_at"], page[-1]["request_id"])
+                       if len(rows) > q.limit else None)
+        return {"receipts": items, "next_cursor": next_cursor, "limit": q.limit}
+
+    def _receipt(self, req: dict[str, Any]) -> dict:
+        """Metadata-only receipt. Never message text, payloads, values, tokens or file names."""
         return {
             "schema_version": "1.0",
             "request_id": req["request_id"],
@@ -356,7 +374,7 @@ class Workflow:
 
     def _mark_stale(self, req: dict[str, Any], code: str) -> None:
         self.store.update_request_if(
-            req["request_id"], {"status": "ready"}, {"status": "stale", "reason_codes": [code]}
+            req["request_id"], {"status": "ready"}, {"status": "stale", "reason_codes": [code], "occurred_at": _now()}
         )
 
     def _response(self, req: dict[str, Any], prepared: transform.PreparedPayload | None) -> dict:

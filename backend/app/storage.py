@@ -123,6 +123,9 @@ class Store:
             cols = {r["name"] for r in conn.execute("PRAGMA table_info(requests)")}
             if "custom_redactions" not in cols:
                 conn.execute("ALTER TABLE requests ADD COLUMN custom_redactions TEXT NOT NULL DEFAULT '[]'")
+            # Creator-only receipt timeline lookups (skipped for unexpected legacy tables).
+            if {"account_id", "status"} <= cols:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_requests_account_status ON requests(account_id, status)")
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -194,6 +197,34 @@ class Store:
         with self.connect() as conn:
             row = conn.execute("SELECT * FROM requests WHERE request_id = ?", (request_id,)).fetchone()
         return _decode(row) if row else None
+
+    def list_timeline(self, account_id: str, q: Any) -> list[dict[str, Any]]:
+        """One page (+1 row to detect a next page) of the account's own outcome rows.
+
+        Ordered by recorded_at (occurred_at, or created_at for older rows without one)
+        then request_id, both descending; ``q.before`` continues after a previous page.
+        """
+        ts = "COALESCE(occurred_at, created_at)"
+        where = ["account_id = ?", f"status IN ({', '.join('?' for _ in q.statuses)})"]
+        params: list[Any] = [account_id, *q.statuses]
+        for column, value in (("decision", q.decision), ("dataset_id", q.dataset_id)):
+            if value is not None:
+                where.append(f"{column} = ?")
+                params.append(value)
+        if q.since is not None:
+            where.append(f"{ts} >= ?")
+            params.append(q.since)
+        if q.until is not None:
+            where.append(f"{ts} < ?")
+            params.append(q.until)
+        if q.before is not None:
+            where.append(f"({ts} < ? OR ({ts} = ? AND request_id < ?))")
+            params.extend([q.before[0], q.before[0], q.before[1]])
+        sql = (f"SELECT *, {ts} AS recorded_at FROM requests WHERE {' AND '.join(where)} "
+               "ORDER BY recorded_at DESC, request_id DESC LIMIT ?")
+        with self.connect() as conn:
+            rows = conn.execute(sql, (*params, q.limit + 1)).fetchall()
+        return [_decode(r) for r in rows]
 
     def update_request_if(self, request_id: str, expected: dict[str, Any], values: dict[str, Any]) -> bool:
         """Compare-and-set update. Returns True only if the row still matched ``expected``."""

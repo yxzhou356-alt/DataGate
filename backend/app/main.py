@@ -5,7 +5,7 @@ Run (one worker):  uvicorn app.main:create_app --factory --host 127.0.0.1 --port
 
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import SessionStore, current_account
@@ -79,6 +79,11 @@ def create_app(settings: Settings | None = None, receiver: ReceiverAdapter | Non
     @app.post("/api/requests/{request_id}/send")
     def send(request_id: str, body: SendBody, account_id: str = Depends(current_account)) -> dict:
         return wf().send(account_id, request_id, body.expected_review_revision, body.preview_hash)
+
+    @app.get("/api/receipts")
+    def receipts(request: Request, account_id: str = Depends(current_account)) -> dict:
+        # Creator-only list; filters come from validated query pairs, never an account id.
+        return wf().list_receipts(account_id, list(request.query_params.multi_items()))
 
     @app.get("/api/requests/{request_id}/receipt")
     def receipt(request_id: str, account_id: str = Depends(current_account)) -> dict:

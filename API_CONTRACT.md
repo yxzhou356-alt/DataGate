@@ -342,6 +342,35 @@ No Authorization header: the response contains no dataset content, identities or
 - result: `passed | failed | not_run`; run_status: `complete | interrupted | error`. Totals are recomputed by the server from the scenarios. A catalogue scenario that is absent from the file is returned as `not_run`.
 - failure_summary contains only a test name, a phase and an exception class name. Reports never contain messages, customer values, tokens, payloads or tracebacks.
 
+## 14. Creator-only receipt timeline (additive)
+
+GET /api/receipts
+
+Requires `Authorization: Bearer <demo-session-token>`. The account is always the token's account; there is no account parameter. The single-receipt route (§9) is unchanged.
+
+Query parameters (all optional; anything else, including `account_id`, or a repeated parameter returns 422 INVALID_REQUEST without echoing the value):
+
+| Parameter | Values |
+| --- | --- |
+| `limit` | 1–100, default 20 |
+| `cursor` | opaque `next_cursor` from a previous page |
+| `status` | `blocked`, `stale`, `sent`, `send_failed` |
+| `decision` | `allow`, `redact`, `block` |
+| `dataset_id` | identifier; only narrows the caller's own records |
+| `since`, `until` | ISO-8601 with a timezone; `since` inclusive, `until` exclusive, `since < until` |
+
+Response 200:
+```json
+{"receipts":[{"...single receipt fields (§9)...":"", "recorded_at":"<UTC>"}],"next_cursor":"<opaque or null>","limit":20}
+```
+
+- Items are the caller's own requests with an outcome: `blocked`, `stale`, `sent` or `send_failed`. Drafts (`ready`) and in-flight `sending` rows are not listed. Each item has exactly the single-receipt fields plus `recorded_at`.
+- `recorded_at` is `occurred_at`, or `created_at` for older rows recorded without one. Requests that become `stale` now record `occurred_at`. The single-receipt route still answers 409 RECEIPT_NOT_READY for stale requests, as before.
+- Order: `recorded_at` descending, then `request_id` descending (stable for identical timestamps). `next_cursor` is null when there is no further item, so a boundary never yields an empty extra page.
+- Not gated on current dataset access: a revoked creator still lists their receipts but cannot preview again.
+- Another account's records are never returned. A `dataset_id` the caller never used, or another account's cursor, yields the same empty page as an unknown value, so nothing can be inferred.
+- Metadata only: never message text, payloads, prompts, detected values, redaction spans or mappings, tokens, file names or paths.
+
 ## 12. Future contract changes
 
 Layer tasks preserve v1 by default. Changes to routes, names, states, payload template, database schema or startup behavior require one coordinated update to this file, backend schema, frontend types and tests. No assistant invents a parallel API version independently.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, ApiError } from '../api'
+import { api, describeError } from '../api'
 import type { EvidenceScenario, EvidenceView, ScenarioResult } from '../types'
 import { FLAG_TEXT, ageText, assessEvidence, isEvidenceView, shortCommit } from '../evidence'
 
@@ -29,7 +29,7 @@ export function EvidenceDashboard({ onBack }: Props) {
         ? { state: 'ready', view, loadedAt: Date.now() }
         : { state: 'error', message: 'The backend returned an unexpected evidence format. Nothing is shown as passing.' })
     } catch (err) {
-      setLoad({ state: 'error', message: err instanceof ApiError ? `${err.message} ${err.action}` : 'The report could not be loaded.' })
+      setLoad({ state: 'error', message: describeError(err, 'The report could not be loaded.') })
     } finally {
       setLoading(false)
     }

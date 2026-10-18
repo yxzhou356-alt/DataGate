@@ -20,6 +20,7 @@ What works today, end to end through the UI and the API:
 - Forbidden purpose (`model_training`), destination (`public_chatbot`) or `sharing_mode=none` are blocked with zero receiver calls.
 - Revoking access after a preview blocks Send. Changed source or policy marks the draft stale.
 - A metadata-only receipt (no message text, names or tokens) is available for blocked, sent and failed requests.
+- *My history* (`#history`, after sign-in): a creator-only timeline of your own sent, blocked, out-of-date and unconfirmed requests (`GET /api/receipts`). It shows dataset, purpose, destination, outcome and redaction counts, and whether the receiver was not called, called without confirmation, or acknowledged. Technical details expand per entry. It stays readable after access is revoked; filter by outcome or source; older entries load in pages of 20.
 
 The receiver is a **local capturing test endpoint**. No external AI model is called and no API key is needed.
 
@@ -45,6 +46,8 @@ pip install -r requirements.txt
 uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
+While developing, add `--reload` to the uvicorn command, or restart the backend after pulling or editing backend code. Vite hot-reloads the frontend but not the backend, so a newer page talking to an older backend shows "Route not found" or "The request body is invalid". The history and evidence pages say "restart the backend" in that case.
+
 On first start the backend seeds `backend/var/` (git-ignored): the SQLite DB and runtime copies of the two fixture CSVs. Committed fixtures in `backend/fixtures/` are never modified. API docs: http://127.0.0.1:8000/api/docs.
 
 **Frontend** (http://127.0.0.1:5173):
@@ -62,9 +65,9 @@ Sessions and their tokens live in memory, so after a backend restart the UI will
 ## Verify
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q      # 79 passed
+cd backend && .venv/bin/python -m pytest -q      # 110 passed
 cd frontend && npm run lint && npm run build     # clean lint, build OK
-cd frontend && node --experimental-strip-types --test tests/redaction.test.ts tests/evidence.test.ts   # 21 passed; display helpers, no extra deps
+cd frontend && node --experimental-strip-types --test tests/*.test.ts   # 24 passed; display helpers, no extra deps
 ```
 
 Tests use a fresh temporary DB and source copies per test. They never touch `backend/var/`: a conftest guard refuses the runtime data directory and points `DATAGATE_DATA_DIR` at throwaway storage, even if you exported it.
@@ -147,21 +150,24 @@ backend/
     policy.py        evaluate() access/purpose/destination/sharing; fingerprint()
     transform.py     CSV read+validate, field minimization, EMAIL/PHONE redaction, canonical payload+hash
     receiver.py      ReceiverAdapter protocol; LocalCapturingReceiver; FailingReceiver; build_receiver()
-    workflow.py      preview / review / send / receipt state machine and send-time rechecks
+    workflow.py      preview / review / send / receipt state machine and send-time rechecks; list_receipts()
+    timeline.py      Receipt timeline query validation (filters, limit) and opaque keyset cursors
     auth.py          Demo sessions (in-memory tokens) + current_account dependency
     schemas.py       Request bodies (extra fields rejected)
     main.py          create_app(): routes only, thin layer over Workflow
     demo_control.py  Owner CLI: revoke, grant, sharing, bump-policy, edit-source, status
   fixtures/          Two synthetic 10-row CSVs (committed, never mutated)
   tests/             test_flow.py, test_send_safety.py, test_transform.py, test_review_ux.py,
-                     test_custom_redactions.py, test_evidence.py, conftest.py (isolation guard, scenario marker)
+                     test_custom_redactions.py, test_evidence.py, test_receipt_timeline.py,
+                     conftest.py (isolation guard, scenario marker)
 frontend/src/
   api.ts, types.ts   API client and wire types (mirror API_CONTRACT.md)
   labels.ts          Human-readable labels for purposes, destinations, decisions
   redaction.ts       Display-only parsing of server placeholders; selection-to-offset helpers for custom redactions
   evidence.ts        Evidence verdicts and labels (missing/invalid/failed/partial/stale), derived from the report
+  timeline.ts        Receipt timeline wording: receiver not called / not confirmed / acknowledged, redaction summary
   App.tsx            App state and flow orchestration
-  components/        AccountGate, RequestForm, ManifestReview, ApprovalPanel, OutcomePanel
+  components/        AccountGate, RequestForm, ManifestReview, ApprovalPanel, OutcomePanel, EvidenceDashboard, ReceiptTimeline
   index.css          Design tokens and styles
 ```
 

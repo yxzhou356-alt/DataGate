@@ -107,6 +107,27 @@ export interface Receipt {
   occurred_at: string | null
 }
 
+/** One creator-only timeline entry: the single-receipt shape plus the sort timestamp. */
+export interface ReceiptListItem extends Receipt {
+  /** occurred_at, or created_at for older rows recorded without one. */
+  recorded_at: string
+}
+
+export interface ReceiptPage {
+  receipts: ReceiptListItem[]
+  next_cursor: string | null
+  limit: number
+}
+
+export type TimelineStatus = 'blocked' | 'stale' | 'sent' | 'send_failed'
+
+export interface TimelineFilters {
+  status?: TimelineStatus
+  dataset_id?: string
+  cursor?: string
+  limit?: number
+}
+
 export interface ApiErrorBody {
   code: string
   message: string

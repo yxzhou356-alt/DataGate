@@ -59,6 +59,7 @@ These are options, not instructions to implement all of them.
 | --- | --- | --- | --- |
 | L1 | Review/UX polish | Bounded terminology/information-layer changes in REVIEW (current human request / Codex); wider work unassigned | Clear locked actions, extra message hiding, stale/error states, responsive layout; same API |
 | L2 | Authorization/regression evidence | IMPLEMENTED on `feature` (human request, Oct 18; Claude): 14-scenario evidence report + `#evidence` dashboard; review pending | Broader isolated allowed/denied/revocation tests and factual result summary |
+| L8 | Creator-only receipt timeline | IMPLEMENTED on `feature` (human request, Oct 18; Claude): `GET /api/receipts` + `#history` view; review pending | Creator-only, metadata-only, paginated; existing receipt route unchanged |
 | L3 | Input quality | UNASSIGNED | Duplicate-ticket and clear row-level errors; no silent data removal |
 | L4 | One real receiver/provider | UNASSIGNED | Only approved canonical content reaches assigned provider; honest failures; regression suite preserved |
 | L5 | Person-name detector/evaluation | UNASSIGNED | Local pretrained detector plus labeled baseline comparison; measured limitations |

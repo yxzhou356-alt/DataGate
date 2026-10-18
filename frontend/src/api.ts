@@ -1,6 +1,6 @@
 // Thin client for the DataGate v1 API. The token lives in memory only.
 import type {
-  ApiErrorBody, CustomRedaction, DatasetSummary, EvidenceView, PreviewResponse, Receipt, SendResponse, SessionResponse,
+  ApiErrorBody, CustomRedaction, DatasetSummary, EvidenceView, ReceiptPage, TimelineFilters, PreviewResponse, Receipt, SendResponse, SessionResponse,
 } from './types'
 
 export class ApiError extends Error {
@@ -16,6 +16,18 @@ export class ApiError extends Error {
     this.status = status
     this.requestId = body.request_id
   }
+}
+
+/**
+ * Readable text for an error shown inside a view. A 404 NOT_FOUND from an API route this
+ * page relies on almost always means the running backend predates the page (uvicorn
+ * started without --reload before the route was added), so say how to fix it.
+ */
+export function describeError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && err.code === 'NOT_FOUND') {
+    return 'The running backend does not have this feature yet; it was probably started before the code was updated. Restart the backend, then reload this page.'
+  }
+  return err instanceof ApiError ? `${err.message} ${err.action}` : fallback
 }
 
 async function call<T>(method: string, path: string, token: string | null, body?: unknown): Promise<T> {
@@ -72,6 +84,14 @@ export const api = {
 
   /** Read-only security evidence report; no token, never runs tests. */
   securityReport: () => call<EvidenceView>('GET', '/evidence/security-report', null),
+
+  /** Creator-only receipt timeline. The account comes from the token; only safe filters are sent. */
+  listReceipts: (token: string, filters: TimelineFilters = {}) => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(filters)) if (value !== undefined && value !== '') params.set(key, String(value))
+    const query = params.toString()
+    return call<ReceiptPage>('GET', `/receipts${query ? `?${query}` : ''}`, token)
+  },
 
   receipt: (token: string, requestId: string) =>
     call<Receipt>('GET', `/requests/${encodeURIComponent(requestId)}/receipt`, token),

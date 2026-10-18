@@ -8,8 +8,15 @@ import { ApprovalPanel, type ReviewChange } from './components/ApprovalPanel'
 import { HIDDEN_MARKER, countPlaceholders, placeholderTypes, toggleIndex } from './redaction'
 import { OutcomePanel } from './components/OutcomePanel'
 import { EvidenceDashboard } from './components/EvidenceDashboard'
+import { ReceiptTimeline } from './components/ReceiptTimeline'
 
 interface Session { token: string; account: Account }
+type View = 'app' | 'evidence' | 'history'
+
+function viewFromHash(): View {
+  const hash = window.location.hash
+  return hash === '#evidence' ? 'evidence' : hash === '#history' ? 'history' : 'app'
+}
 interface Notice { code: string; message: string; action: string; needsNewPreview: boolean }
 
 // Errors after which the current draft can never be sent; a fresh preview is needed.
@@ -49,11 +56,12 @@ export default function App() {
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [busy, setBusy] = useState(false)
-  // '#evidence' opens the read-only security evidence dashboard; the request state is kept meanwhile.
-  const [view, setView] = useState<'app' | 'evidence'>(() => (window.location.hash === '#evidence' ? 'evidence' : 'app'))
+  // '#evidence' opens the read-only security evidence dashboard and '#history' the creator-only
+  // receipt timeline (after sign-in); the current request state is kept meanwhile.
+  const [view, setView] = useState<View>(viewFromHash)
 
   useEffect(() => {
-    const onHash = () => setView(window.location.hash === '#evidence' ? 'evidence' : 'app')
+    const onHash = () => setView(viewFromHash())
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -230,6 +238,9 @@ export default function App() {
           Signed in as <strong>{session.account.display_name}</strong>
           <span className="demo-tag">demo session</span>
         </span>
+        {view === 'history'
+          ? <a className="btn btn-quiet" href="#">Back to request</a>
+          : <a className="btn btn-quiet" href="#history">My history</a>}
         <a className="btn btn-quiet" href="#evidence">Security evidence</a>
         <button className="btn btn-quiet" onClick={signOut}>Switch account</button>
       </header>
@@ -244,6 +255,9 @@ export default function App() {
         </div>
       )}
 
+      {view === 'history' ? (
+        <ReceiptTimeline token={session.token} datasets={datasets} onError={showError} />
+      ) : (
       <div className="workspace">
         <RequestForm
           datasets={datasets}
@@ -298,6 +312,7 @@ export default function App() {
           </section>
         )}
       </div>
+      )}
 
       <footer className="foot">
         Local demo. The receiver is a capturing test endpoint; no external AI model is called.
