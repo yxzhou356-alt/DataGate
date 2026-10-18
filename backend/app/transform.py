@@ -7,11 +7,13 @@ Pipeline (always in this order, always on the backend):
 3. Keep only the policy's outbound fields for the purpose (baseline: message).
 4. Rewrite source-authored placeholder-like tokens ("[PERSON_1]" -> "(PERSON_1)") so
    square-bracket tokens in outbound text only ever come from DataGate.
-5. Mandatory redaction by span offsets on each message: EMAIL, then PHONE, then PERSON.
-   Precedence: EMAIL > PHONE > PERSON. A PHONE match overlapping an EMAIL is dropped;
-   PERSON spans are trimmed to exclude EMAIL/PHONE ranges (no name fragment survives
-   next to an address), and overlapping PERSON spans are merged. Each source character
-   is replaced at most once, right to left by offset.
+5. Mandatory redaction by span offsets on each message, in precedence order
+   EMAIL > SSN > CREDIT_CARD > IP_ADDRESS > PHONE > DOB > ADDRESS > PERSON.
+   Each rule runs on the text with every higher-priority match masked out, so a lower
+   rule can never match inside (or across) a higher one. PERSON spans are trimmed to
+   exclude all other matches (no name fragment survives next to them), and overlapping
+   PERSON spans are merged. Each source character is replaced at most once, right to
+   left by offset. Only owner-required types run.
    PERSON style "numbered" assigns [PERSON_1], [PERSON_2], ... over ALL messages in
    source order (before hiding) by normalized name; the mapping lives only in memory.
 6. Replace requester-selected spans of the redacted text with [REDACTED_BY_USER].
@@ -33,6 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .detectors import DetectorError, PersonDetector, detect_persons
+from .pii_patterns import FINDERS
 
 SCHEMA_VERSION = "1.0"
 INSTRUCTIONS = {
@@ -40,7 +43,7 @@ INSTRUCTIONS = {
 }
 # Bump when the transformation changes output for the same source + policy; it is part of
 # the freshness check, so open approvals become stale (TRANSFORM_CHANGED).
-TRANSFORM_VERSION = "2"
+TRANSFORM_VERSION = "3"  # 3: SSN, CREDIT_CARD, IP_ADDRESS, DOB, ADDRESS
 PERSON_STYLES = ("generic", "numbered")
 HIDDEN_MARKER = "[HIDDEN_BY_USER]"
 CUSTOM_MARKER = "[REDACTED_BY_USER]"
@@ -140,7 +143,10 @@ def read_source(path: Path) -> SourceSnapshot:
     return SourceSnapshot(sha256=digest, columns=tuple(header), rows=tuple(rows))
 
 
-_SOURCE_TOKEN = re.compile(r"\[(EMAIL|PHONE|PERSON(?:_\d+)?|HIDDEN_BY_USER|REDACTED_BY_USER)\]", re.IGNORECASE)
+# Every token name DataGate can emit. Source text containing one is rewritten first.
+DETERMINISTIC_ORDER = ("EMAIL", "SSN", "CREDIT_CARD", "IP_ADDRESS", "PHONE", "DOB", "ADDRESS")
+_TOKEN_NAMES = "|".join(DETERMINISTIC_ORDER) + r"|PERSON(?:_\d+)?"
+_SOURCE_TOKEN = re.compile(rf"\[({_TOKEN_NAMES}|HIDDEN_BY_USER|REDACTED_BY_USER)\]", re.IGNORECASE)
 _EDGE = " \t\n\r.,;:!?()[]{}\"'’-"
 
 
@@ -192,15 +198,18 @@ def _subtract(span: tuple[int, int], blockers: list[tuple[int, int]], text: str)
 
 def _message_spans(text: str, required: tuple[str, ...], person_detector: PersonDetector | None) -> list[tuple[int, int, str]]:
     spans: list[tuple[int, int, str]] = []
-    emails = [(m.start(), m.end()) for m in PATTERNS["EMAIL"].finditer(text)] if "EMAIL" in required else []
-    spans += [(s, e, "EMAIL") for s, e in emails]
-    phones: list[tuple[int, int]] = []
-    if "PHONE" in required:
-        masked = list(text)
-        for s, e in emails:  # an email's digits are never read as a phone number
-            masked[s:e] = "\x00" * (e - s)
-        phones = [(m.start(), m.end()) for m in PATTERNS["PHONE"].finditer("".join(masked))]
-        spans += [(s, e, "PHONE") for s, e in phones]
+    masked = list(text)
+    for rtype in DETERMINISTIC_ORDER:
+        if rtype not in required:
+            continue
+        current = "".join(masked)
+        found = ([(m.start(), m.end()) for m in PATTERNS[rtype].finditer(current)] if rtype in PATTERNS
+                 else FINDERS[rtype](current))
+        for s_, e_ in found:
+            if "\x00" in masked[s_:e_]:
+                continue  # would straddle an earlier (higher-priority or same-type) match
+            spans.append((s_, e_, rtype))
+            masked[s_:e_] = "\x00" * (e_ - s_)  # nothing lower may match inside it
     if "PERSON" in required:
         if person_detector is None:
             raise DetectorUnavailable()
@@ -208,7 +217,7 @@ def _message_spans(text: str, required: tuple[str, ...], person_detector: Person
             persons = detect_persons(person_detector, text)
         except DetectorError:
             raise DetectorUnavailable()
-        protected = sorted(emails + phones)
+        protected = sorted((s_, e_) for s_, e_, _ in spans)
         trimmed = sorted({p for span in persons for p in _subtract(span, protected, text)})
         merged: list[tuple[int, int]] = []
         for s, e in trimmed:
@@ -281,13 +290,13 @@ def redacted_messages(
     return mandatory_redact([row["message"] for row in source.rows], required_redactions, person_detector, person_style)[0]
 
 
-_PLACEHOLDER = re.compile(r"\[(EMAIL|PHONE|PERSON(?:_\d+)?)\]")
+_PLACEHOLDER = re.compile(rf"\[({_TOKEN_NAMES})\]")
 
 
 def placeholder_spans(text: str, required_redactions: tuple[str, ...]) -> list[tuple[int, int]]:
     spans = []
     for m in _PLACEHOLDER.finditer(text):
-        if m.group(1).split("_")[0] in required_redactions:
+        if re.sub(r"^PERSON_\d+$", "PERSON", m.group(1)) in required_redactions:
             spans.append((m.start(), m.end()))
     return spans
 

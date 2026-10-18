@@ -88,9 +88,17 @@ def _fixture_values(fixtures_dir: Path = FIXTURES_DIR) -> set[str]:
                     value = value.strip()
                     if column == "message":
                         values.update(w for w in re.split(r"[.!?]", value) if len(w.strip()) >= 12)
+                    elif re.fullmatch(r"[\d.,]+", value):
+                        if len(re.sub(r"\D", "", value)) >= 6:  # small amounts are not identifying
+                            values.add(value)
                     elif len(value) >= 3:
                         values.add(value)
     return {v.strip() for v in values if v.strip()}
+
+
+def _contains_value(text: str, value: str) -> bool:
+    """Whole-token match, so a short value never matches inside a hash, timestamp or number."""
+    return re.search(rf"(?<![\w]){re.escape(value)}(?![\w])", text) is not None
 
 
 def prohibited_findings(text: str, fixtures_dir: Path = FIXTURES_DIR) -> list[str]:
@@ -102,7 +110,7 @@ def prohibited_findings(text: str, fixtures_dir: Path = FIXTURES_DIR) -> list[st
         found.append("phone-like value")
     if _SECRETISH.search(text):
         found.append("credential-like text")
-    if any(v in text for v in _fixture_values(fixtures_dir)):
+    if any(_contains_value(text, v) for v in _fixture_values(fixtures_dir)):
         found.append("fixture customer value or message text")
     return found
 

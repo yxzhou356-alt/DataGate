@@ -384,6 +384,16 @@ Coordinated change requested by the human on Oct 18, 2026. Backend schema, front
 - New errors: `503 DETECTOR_UNAVAILABLE`: PERSON is required but detection failed. Nothing is prepared at preview. At review or send the draft becomes `stale` with that reason and the receiver is not called. `409 TRANSFORM_CHANGED`: the transformation or detector version differs from the one that built the preview. The draft becomes `stale`, with zero receiver calls.
 - Approval freshness now also covers `person_style` (policy fingerprint) and the transformation/detector pipeline id.
 
+## 16. Structured identifier types (additive)
+
+Requested by the human on Oct 18, 2026. `required_redactions` may additionally contain `SSN`, `CREDIT_CARD`, `ADDRESS`, `IP_ADDRESS`, `DOB`. The tokens are `[SSN]`, `[CREDIT_CARD]`, `[ADDRESS]`, `[IP_ADDRESS]`, `[DOB]`, and `redaction_counts` gains the same keys when a type is required.
+
+- Precedence (highest first): EMAIL > SSN > CREDIT_CARD > IP_ADDRESS > PHONE > DOB > ADDRESS > PERSON. Lower rules never match inside or across higher-priority matches.
+- Source text that already contains one of these tokens (any case) is rewritten with parentheses, as in §15.
+- Custom redaction spans may cover these tokens completely but not cut through them.
+- The rules (and what each deliberately does not match) are documented in README.md. A match is a redaction decision, not proof that a value is a real issued identifier.
+- `TRANSFORM_VERSION` became `3`. Drafts prepared under version 2 become stale (`409 TRANSFORM_CHANGED`).
+
 ## 12. Future contract changes
 
 Layer tasks preserve v1 by default. Changes to routes, names, states, payload template, database schema or startup behavior require one coordinated update to this file, backend schema, frontend types and tests. No assistant invents a parallel API version independently.

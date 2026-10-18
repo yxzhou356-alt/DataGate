@@ -46,6 +46,8 @@ export function redactionSummary(r: Pick<Receipt, 'redaction_counts' | 'addition
   if (r.review_revision === null) return 'Not scanned: blocked before a preview was prepared'
   const words: Record<string, [string, string]> = {
     EMAIL: ['email address', 'email addresses'], PHONE: ['phone number', 'phone numbers'], PERSON: ['person name', 'person names'],
+    SSN: ['Social Security number', 'Social Security numbers'], CREDIT_CARD: ['card number', 'card numbers'],
+    IP_ADDRESS: ['IP address', 'IP addresses'], ADDRESS: ['street address', 'street addresses'], DOB: ['date of birth', 'dates of birth'],
   }
   const auto = Object.entries(r.redaction_counts)
     .filter(([, n]) => n > 0)

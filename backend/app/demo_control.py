@@ -10,6 +10,7 @@ sees changes at its next protected operation.
     python -m app.demo_control bump-policy --dataset feedback_a
     python -m app.demo_control edit-source --dataset feedback_a
     python -m app.demo_control redactions --dataset feedback_a --types EMAIL,PHONE,PERSON --person-style numbered
+    python -m app.demo_control redactions --dataset feedback_a --types ALL --person-style numbered
     python -m app.demo_control add-named-row --dataset feedback_a
     python -m app.demo_control status
 """
@@ -44,7 +45,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--dataset", required=True)
     p = sub.add_parser("redactions", help="set required redaction types (EMAIL and PHONE always stay) and PERSON style")
     p.add_argument("--dataset", required=True)
-    p.add_argument("--types", required=True, help="comma-separated, e.g. EMAIL,PHONE,PERSON")
+    p.add_argument("--types", required=True,
+                   help="comma-separated from EMAIL,SSN,CREDIT_CARD,IP_ADDRESS,PHONE,DOB,ADDRESS,PERSON, or ALL")
     p.add_argument("--person-style", choices=["generic", "numbered"], default="generic")
     p = sub.add_parser("add-named-row", help="append one synthetic row that mentions people and bump the revision")
     p.add_argument("--dataset", required=True)
@@ -86,6 +88,8 @@ def main(argv: list[str] | None = None) -> None:
             version = store.bump_policy_version(conn, args.dataset)
         elif args.cmd == "redactions":
             types = [t.strip().upper() for t in args.types.split(",") if t.strip()]
+            if types == ["ALL"]:
+                types = list(SUPPORTED_REDACTIONS)
             unknown = [t for t in types if t not in SUPPORTED_REDACTIONS]
             if unknown or not set(MANDATORY_BASELINE) <= set(types):
                 conn.execute("ROLLBACK")

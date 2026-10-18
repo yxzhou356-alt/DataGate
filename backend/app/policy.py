@@ -13,7 +13,8 @@ from dataclasses import asdict, dataclass
 
 from .storage import Policy
 
-SUPPORTED_REDACTIONS = ("EMAIL", "PHONE", "PERSON")
+# In redaction precedence order (see transform.py).
+SUPPORTED_REDACTIONS = ("EMAIL", "SSN", "CREDIT_CARD", "IP_ADDRESS", "PHONE", "DOB", "ADDRESS", "PERSON")
 MANDATORY_BASELINE = ("EMAIL", "PHONE")  # the owner CLI never removes these
 
 

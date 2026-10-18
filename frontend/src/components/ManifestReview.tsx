@@ -123,6 +123,11 @@ function pointOffset(container: HTMLElement, node: Node, offset: number, edge: '
   return edge === 'start' ? start : end
 }
 
+/** "a", "a and b", "a, b and c" */
+function listText(items: string[]): string {
+  return items.length <= 2 ? items.join(' and ') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}
+
 function countsText(counts: Record<string, number>): string {
   return Object.entries(counts).filter(([, n]) => n > 0).map(([t, n]) => redactionCountLabel(t, n)).join(', ')
 }
@@ -194,8 +199,8 @@ export function ManifestReview({
           <h3 className="summary-title">Replaced inside messages</h3>
           <p className="summary-help">
             {redactions.length === 0
-              ? 'No email addresses or phone numbers were found in the messages.'
-              : `${redactions.map(([t, n]) => redactionCountLabel(t, n)).join(' and ')} replaced across all messages.`}
+              ? 'Nothing that the owner rules cover was found in the messages.'
+              : `${listText(redactions.map(([t, n]) => redactionCountLabel(t, n)))} replaced across all messages.`}
           </p>
           <p className="legend">
             {(types.length ? types : ['EMAIL']).map((t) => <RedactionMarker key={t} type={t} />)}
@@ -210,7 +215,7 @@ export function ManifestReview({
           {editable && !supportsCustom && (
             <strong className="compat-note">Partial redaction is unavailable: the DataGate backend is older than this page. Restart the backend, then prepare a new preview. </strong>
           )}
-          Automatic detection covers {types.map(redactionLabel).join(' and ') || 'supported identifiers'} only.
+          Automatic detection covers {listText(types.map(redactionLabel)) || 'supported identifiers'} only.
           Read each message for other sensitive details. Redact part of a message, or hide the whole message.
         </p>
       </div>

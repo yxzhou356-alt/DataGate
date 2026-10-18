@@ -20,16 +20,25 @@ export function destinationLabel(id: string): string {
 }
 
 export function redactionLabel(type: string): string {
-  return ({ EMAIL: 'email addresses', PHONE: 'phone numbers', PERSON: 'person names' } as Record<string, string>)[type] ?? type
+  return ({
+    EMAIL: 'email addresses', PHONE: 'phone numbers', PERSON: 'person names', SSN: 'Social Security numbers',
+    CREDIT_CARD: 'card numbers', IP_ADDRESS: 'IP addresses', ADDRESS: 'street addresses', DOB: 'dates of birth',
+  } as Record<string, string>)[type] ?? type
 }
 
 /** Short word shown inside a redaction marker. */
 export function redactionShortLabel(type: string): string {
-  return ({ EMAIL: 'email', PHONE: 'phone', PERSON: 'person' } as Record<string, string>)[type] ?? type.toLowerCase()
+  return ({
+    EMAIL: 'email', PHONE: 'phone', PERSON: 'person', SSN: 'SSN', CREDIT_CARD: 'card', IP_ADDRESS: 'IP',
+    ADDRESS: 'address', DOB: 'birth date',
+  } as Record<string, string>)[type] ?? type.toLowerCase()
 }
 
 export function redactionCountLabel(type: string, count: number): string {
-  const singular = ({ EMAIL: 'email address', PHONE: 'phone number', PERSON: 'person name' } as Record<string, string>)[type] ?? type
+  const singular = ({
+    EMAIL: 'email address', PHONE: 'phone number', PERSON: 'person name', SSN: 'Social Security number',
+    CREDIT_CARD: 'card number', IP_ADDRESS: 'IP address', ADDRESS: 'street address', DOB: 'date of birth',
+  } as Record<string, string>)[type] ?? type
   return `${count} ${count === 1 ? singular : redactionLabel(type)}`
 }
 

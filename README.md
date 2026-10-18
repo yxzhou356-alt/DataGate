@@ -65,12 +65,34 @@ Sessions and their tokens live in memory, so after a backend restart the UI will
 ## Verify
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q      # 176 passed
+cd backend && .venv/bin/python -m pytest -q      # 228 passed
 cd frontend && npm run lint && npm run build     # clean lint, build OK
-cd frontend && node --experimental-strip-types --test tests/*.test.ts   # 28 passed; display helpers, no extra deps
+cd frontend && node --experimental-strip-types --test tests/*.test.ts   # 29 passed; display helpers, no extra deps
 ```
 
 Tests use a fresh temporary DB and source copies per test. They never touch `backend/var/`: a conftest guard refuses the runtime data directory and points `DATAGATE_DATA_DIR` at throwaway storage, even if you exported it.
+
+### Structured identifiers: SSN, card, street address, IP, date of birth
+
+An owner can require any of `SSN`, `CREDIT_CARD`, `ADDRESS`, `IP_ADDRESS`, `DOB` in addition to EMAIL and PHONE. They are off in the default policies. To turn everything on for a demo:
+
+```bash
+cd backend && .venv/bin/python -m app.demo_control redactions --dataset feedback_a --types ALL --person-style numbered
+```
+
+With every type on, the committed MapleCo fixture yields 3 EMAIL, 1 SSN, 1 CREDIT_CARD, 2 IP_ADDRESS, 3 PHONE, 1 DOB and 2 ADDRESS replacements. All rules are local and standard-library only (`app/pii_patterns.py`):
+
+| Type | Rule | Deliberately not matched |
+| --- | --- | --- |
+| `SSN` | 3-2-4 digits. With an SSN cue shortly before (`SSN`, `social security`, `ITIN`…): any such shape, including invalid 9xx/666 areas, except all-zero groups. Without a cue: only dashed `ddd-dd-dddd` that passes SSA issuance rules and isn't labelled as an order/ticket/invoice/… number. | Bare 9-digit numbers without an SSN cue (order numbers, `national ID 900123456`). |
+| `CREDIT_CARD` | 13–19 digits passing **Luhn** and a known issuer prefix. Card grouping (4-4-4-4, 4-6-5) is enough; otherwise a payment word (card, charged, refund…) must be nearby. | Luhn failures, unknown prefixes, ungrouped numbers without payment context, 12-digit bank numbers. Passing Luhn does not mean a card exists. |
+| `ADDRESS` | US-style: house number + capitalized street name + street suffix, optional unit (before or after), optional `, City(,) ST ZIP`; PO boxes. | A city, state or ZIP alone (`Los Angeles`, `Los Angeles, CA 90012`), lowercase or non-US formats. |
+| `IP_ADDRESS` | IPv4/IPv6 candidates validated by `ipaddress` (ports and IPv6 zone ids handled). | Invalid octets, times, MAC addresses, dotted numbers right after `version`/`build`/`v`. |
+| `DOB` | A real calendar date (ISO, US/day-first numeric, month names) right after a birth cue (`DOB`, `date of birth`, `born on`, `birthday`). | Dates without that cue (purchase, outage, renewal), impossible or future dates, a year alone. |
+
+Precedence when matches overlap, highest first: **EMAIL > SSN > CREDIT_CARD > IP_ADDRESS > PHONE > DOB > ADDRESS > PERSON**. Each rule runs on text with higher-priority matches masked out, so no value is split or redacted twice. Cue words such as "SSN" or "DOB" stay visible as context. Rule changes bump `TRANSFORM_VERSION`, which makes open approvals stale (`TRANSFORM_CHANGED`).
+
+Still not detected: national IDs, passport and driver-license numbers, bank account numbers, device and user IDs. The fixture includes all of these on purpose. Analysts can redact them with *Redact selection*. These rules were checked against the committed synthetic fixtures and unit cases only; they are not a measured accuracy claim on real data.
 
 ### Person names: local detection and numbered pseudonyms
 
@@ -172,7 +194,7 @@ Keep a third terminal in `backend/` with the venv active for the owner controls.
 Other owner controls:
 - `python -m app.demo_control sharing --dataset feedback_a --mode none` (then `--mode redacted_only` to restore)
 - `python -m app.demo_control edit-source --dataset feedback_a` (appends a synthetic row and bumps the dataset revision)
-- `python -m app.demo_control redactions --dataset feedback_a --types EMAIL,PHONE,PERSON [--person-style numbered]` and `add-named-row --dataset feedback_a` (see *Person names* above)
+- `python -m app.demo_control redactions --dataset feedback_a --types EMAIL,PHONE,PERSON [--person-style numbered]` (or `--types ALL`) and `add-named-row --dataset feedback_a` (see *Structured identifiers* and *Person names* above)
 - `python -m app.demo_control status`
 
 Failure demo: start the backend with `DATAGATE_RECEIVER=fail`. Send then returns *Not confirmed*, with 1 receiver call recorded and no confirmed hash.
@@ -237,7 +259,7 @@ Where later layers plug in (see the backlog in TEAM_WORKFLOW.md):
 ## Known limits
 
 - Demo sign-in is simulated authentication, not production login. Anyone running the app can pick either account.
-- Detection covers emails and North-American 10-digit phone formats, plus person names when an owner requires PERSON. The name detector is lexicon-based: see its measured limits above. The [PII fixtures](backend/fixtures/README.md) include names, addresses, SSN-shaped values, other government identifiers, card and bank numbers, DOB and network IDs. These additions do not implement detectors for those other categories.
+- Detection covers emails and North-American 10-digit phone formats by default. An owner can add SSN, card numbers, US street addresses, IP addresses, dates of birth (with a birth cue) and person names; see their rules above. The name detector is lexicon-based, with measured limits. National IDs, passport, license and bank-account numbers and device/user IDs in the [PII fixtures](backend/fixtures/README.md) are not detected.
 - CSV validation currently accepts an unclosed quoted field and may merge later records. This needs a bounded backend fix before claiming the no-silent-repair requirement is fully met; see B1 in [the review](BASELINE_UX_REVIEW.md).
 - Analyst approval is not customer consent. Receipts and hashes are evidence of this gateway's actions, not proof of privacy or recipient behavior.
 - Revocation applies at the next protected step. It cannot recall content already sent, and it isn't distributed or atomic across services.

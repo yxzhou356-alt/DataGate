@@ -151,3 +151,12 @@ test('a selection starting inside [PERSON_2] expands to the whole placeholder', 
   const p2 = base.indexOf('[PERSON_2]')
   assert.deepEqual(snapSelection(base, segs, p2 + 4, base.indexOf(' to')), { start: p2, end: p2 + 10 })
 })
+
+test('structured placeholders with shared suffixes parse exactly', () => {
+  const types = placeholderTypes(['EMAIL', 'SSN', 'CREDIT_CARD', 'IP_ADDRESS', 'PHONE', 'DOB', 'ADDRESS'])
+  const text = 'SSN [SSN], card [CREDIT_CARD], [IP_ADDRESS] near [ADDRESS] (ADDRESS) DOB [DOB]'
+  const segs = segmentMessage(text, types)
+  assert.deepEqual(segs.filter((s) => s.kind === 'redaction').map((s) => (s.kind === 'redaction' ? s.type : '')),
+    ['SSN', 'CREDIT_CARD', 'IP_ADDRESS', 'ADDRESS', 'DOB'])
+  assert.equal(renderSegments(buildReviewSegments(text, [], types)), text)
+})
