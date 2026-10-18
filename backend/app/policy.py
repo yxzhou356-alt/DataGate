@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass
 
 from .storage import Policy
 
-SUPPORTED_REDACTIONS = ("EMAIL", "PHONE")
+SUPPORTED_REDACTIONS = ("EMAIL", "PHONE", "PERSON")
 
 
 @dataclass(frozen=True)
@@ -48,4 +48,9 @@ def evaluate(policy: Policy, account_id: str, purpose: str, destination: str) ->
     if not policy.outbound_fields.get(purpose):
         if "PURPOSE_NOT_ALLOWED" not in codes:
             codes.append("PURPOSE_NOT_ALLOWED")
+    if purpose in policy.allowed_purposes and (
+            purpose != "feedback_summary" or policy.outbound_fields.get(purpose) != ["message"]):
+        codes.append("UNSUPPORTED_POLICY")
+    if any(t not in SUPPORTED_REDACTIONS for t in policy.required_redactions):
+        codes.append("UNSUPPORTED_POLICY")
     return PolicyDecision(has_access=has_access, allowed=has_access and not codes, reason_codes=tuple(codes))

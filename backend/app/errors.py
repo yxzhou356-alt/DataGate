@@ -13,6 +13,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # code -> (http status, message, suggested action)
 ERRORS: dict[str, tuple[int, str, str]] = {
+    "UNSUPPORTED_POLICY": (403, "This policy requires unsupported processing.", "Ask the owner to correct the policy."),
+    "DETECTOR_UNAVAILABLE": (503, "The required local name detector is unavailable.", "Install the documented local model, then create a new preview."),
+    "RAW_ACCESS_DENIED": (403, "Manual source selection requires raw-message access.", "Use whole-message hiding or contact the owner."),
     "AUTH_REQUIRED": (401, "A demo session token is required.", "Select a demo account first."),
     "INVALID_SESSION": (401, "The session token is invalid or expired.", "Select a demo account again."),
     "DATASET_NOT_FOUND": (404, "Dataset not found.", "Choose a dataset from your list."),
@@ -55,6 +58,13 @@ def envelope(code: str, message: str, action: str, request_id: str | None) -> di
 
 
 def install_error_handlers(app: FastAPI) -> None:
+    from .detection import DetectorUnavailable
+
+    @app.exception_handler(DetectorUnavailable)
+    async def _detector_unavailable(_: Request, __: DetectorUnavailable) -> JSONResponse:
+        status, message, action = ERRORS["DETECTOR_UNAVAILABLE"]
+        return JSONResponse(status_code=status, content=envelope("DETECTOR_UNAVAILABLE", message, action, None))
+
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
         return JSONResponse(status_code=exc.status, content=envelope(exc.code, exc.message, exc.action, exc.request_id))

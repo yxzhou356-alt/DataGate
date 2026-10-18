@@ -1,3 +1,5 @@
+> Historical planning guide. The implemented six-feature branch is documented in README.md, PROJECT_CONTEXT.md, API_CONTRACT.md, TEAM_WORKFLOW.md and FEATURE_HANDOFF.md. Those current files take precedence over older phase/status/assignment statements below.
+
 # DataGate implementation guide — current baseline-first version
 
 This guide has been updated for the team's latest decision: ONE coding assistant builds the complete baseline, then teammates' assistants add bounded layers or debug it. Human responsibilities are UNASSIGNED.

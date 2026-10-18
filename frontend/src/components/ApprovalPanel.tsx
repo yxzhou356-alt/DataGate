@@ -29,7 +29,7 @@ export function ApprovalPanel({ preview, confirmed, busy, disabledReason, onConf
         If anything changed, nothing is sent and you'll be asked for a fresh preview.
       </p>
       <label className="confirm">
-        <input type="checkbox" checked={confirmed} onChange={(e) => onConfirm(e.target.checked)} disabled={!!disabledReason} />
+        <input type="checkbox" checked={confirmed} onChange={(e) => onConfirm(e.target.checked)} disabled={busy || !!disabledReason} />
         <span>I reviewed the messages above and approve sending exactly this content.</span>
       </label>
       <button className="btn btn-primary btn-send" disabled={busy || !confirmed || !!disabledReason} onClick={onSend}>

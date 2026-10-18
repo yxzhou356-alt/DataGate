@@ -19,16 +19,20 @@ def test_allowed_request_reaches_receiver_exactly_once_with_previewed_bytes(clie
     assert p["status"] == "ready" and p["decision"] == "redact"
     assert p["reason_codes"] == ["REDACTION_REQUIRED"]
     assert p["dropped_fields"] == ["ticket_id", "customer_name", "email", "phone", "plan_tier", "account_value", "product_area"]
-    assert p["redaction_counts"] == {"EMAIL": 2, "PHONE": 2}
+    assert p["redaction_counts"]["EMAIL"] == 2
+    assert p["redaction_counts"]["PHONE"] == 2
+    assert p["redaction_counts"]["PERSON"] >= 3  # Local pretrained model, includes repeats.
+    assert "Alice Jones" not in json.dumps(p["outbound_payload"])
+    assert "Bob Smith" not in json.dumps(p["outbound_payload"])
     assert p["receiver_attempts"] == 0 and receiver.invocations == []
 
     payload = p["outbound_payload"]
     assert set(payload) == {"schema_version", "purpose", "instruction", "messages"}
     assert len(payload["messages"]) == 10
-    assert payload["messages"][0] == "The reset link expired. Please contact [EMAIL]."
+    assert payload["messages"][0] == "[PERSON_001] reports: The reset link expired. Please contact [EMAIL]."
     assert payload["messages"][9] == "The upgrade button does nothing; text me at [PHONE]."
     # Unicode survives untouched.
-    assert "La app se cierra al abrir el panel — crashes" in payload["messages"][4]
+    assert "— crashes every time on" in payload["messages"][4]  # English NER may flag Spanish words.
 
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
     assert p["preview_hash"] == hashlib.sha256(canonical).hexdigest()

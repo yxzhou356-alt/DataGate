@@ -1,6 +1,6 @@
 # DataGate API contract v1
 
-Status: implementation target, not an existing running API. This is the authoritative wire contract. Change it only through the human/integration owner, with coordinated frontend/backend/tests updates.
+Status: implemented baseline plus the human-assigned v1.1 six-feature extension. This is the authoritative wire contract. Section 12 defines additive v1.1 fields/routes; earlier examples are abbreviated baseline shapes. Coordinate changes across backend, frontend and tests.
 
 ## 1. Conventions
 
@@ -289,3 +289,101 @@ Tests inject isolated fixtures/store and a capturing or failing receiver. Inspec
 ## 12. Future contract changes
 
 Layer tasks preserve v1 by default. Changes to routes, names, states, payload template, database schema or startup behavior require one coordinated update to this file, backend schema, frontend types and tests. No assistant invents a parallel API version independently.
+
+
+## 12. Implemented v1.1 extension
+
+The user explicitly assigned all six layers on top of `base-line` commit `21f5abc`. Existing v1 request bodies remain accepted. Receiver payload and metadata receipt retain schema_version `1.0`; audit exports/security reports use `1.1`. API application version is `1.1.0`.
+
+### Preview and review response additions
+
+Every preview response includes:
+
+```typescript
+raw_view_allowed: boolean
+original_messages: string[] | null
+findings: {
+  id: string; message_index: number; start: number; end: number;
+  category: string; replacement: string; mandatory: boolean; detector: string;
+}[]
+manual_spans: {message_index: number; start: number; end: number}[]
+detector_status: {
+  available: boolean; model: string; version: string | null; fingerprint: string;
+  // Additional metadata-only version/artifact descriptor fields are allowed.
+}
+policy_explanations: {
+  field: string; result: 'included' | 'excluded' | 'redacted';
+  explanation: string; rule_id: string;
+}[]
+```
+
+Raw review requires both current dataset-processing access and a separate owner raw-message grant. Fresh seeds authorize raw review only for analyst_a/feedback_a. Without it, `original_messages=null`, `findings=[]`, and manual source-span selections are forbidden; transformed processing and whole-message hiding remain possible. Excluded CSV columns are never sent to the browser. Blocked previews contain no original/outbound content or findings.
+
+Finding/manual offsets are zero-based Unicode **code points in the original retained message**, not UTF-16 or offsets in the pseudonymized text. The browser converts DOM selections accordingly. Finding text/identity mappings are not separate API fields; originals may be returned only with raw access.
+
+Current supported owner redactions are EMAIL, PHONE, PERSON. Required unknown detectors or configured unsupported operations/field templates produce a recorded 200 blocked preview with reason `UNSUPPORTED_POLICY`. Required PERSON unavailability/inference failure returns the fixed error envelope, HTTP503 `DETECTOR_UNAVAILABLE`; no dispatch is performed. Fresh policies require all three types. EMAIL/PHONE use baseline tokens; equal case-folded, whitespace-normalized PERSON surfaces share `[PERSON_001]`-style tokens across a request, assigned before optional hiding. Aliases are not resolved, and state resets between requests. Overlap resolution must preserve the coverage of mandatory detections.
+
+### Review body additions
+
+```json
+{
+  "expected_review_revision": 1,
+  "expected_preview_hash": "<current 64-char lowercase sha256>",
+  "hide_message_indices": [],
+  "manual_spans": [{"message_index":0,"start":5,"end":13}]
+}
+```
+
+Both new fields are optional for old clients; the new frontend always supplies both. Omitted `manual_spans` preserves stored choices; an explicit `[]` clears optional spans only. It cannot remove mandatory detections. Spans are strict nonboolean integers, in-bounds and nonempty; at most1000 spans and10000 whole-message indices. Invalid spans yield422 `INVALID_REVIEW` (malformed schemas422 `INVALID_REQUEST`) without changing the draft. Nonempty manual choices require raw access or403 `RAW_ACCESS_DENIED`. Overlapping spans are unioned by the backend; it rebuilds payload from source and never accepts replacement outgoing text.
+
+A supplied mismatching expected hash yields409 `PREVIEW_CHANGED`. Review revision still increments on every accepted review. Changes to source/policy/raw grants/detector implementation/model invalidate prior approval. Detector and transformation implementation fingerprints augment baseline binding; old drafts without this fingerprint require regeneration.
+
+### History, events and export
+
+All routes require a valid demo token and expose metadata only:
+
+- `GET /api/history?dataset_id=&decision=&user_id=` returns `{requests: HistoryRow[], total:number}`. At most the latest200 matching rows, creator only; total is the number returned. user_id is optional and must equal the authenticated account or403 `REQUEST_ACCESS_DENIED`. No admin/global user browsing is implemented. Dataset/decision strings use parameterized SQL and unknown values simply match no rows.
+- `GET /api/requests/{request_id}/timeline` returns `{request_id, events: AuditEvent[]}`.
+- `GET /api/requests/{request_id}/audit` returns `{schema_version:'1.1', request:HistoryRow, events:AuditEvent[], receipt:Receipt|null}`.
+
+```typescript
+type HistoryRow = {
+  request_id:string; dataset_id:string; purpose:string; destination:string;
+  status:string; decision:string; created_at:string; occurred_at:string|null;
+  receiver_attempts:number; review_revision:number|null;
+}
+type AuditEvent = {
+  event_id:string; event_type:string; actor_kind:string; actor_id:string;
+  occurred_at:string; metadata:Record<string, unknown>;
+}
+```
+
+Events are recorded with actual request transitions in the same SQLite transaction: preview, review, send_claimed, send, send_failed, blocked, approval_invalidated. Local owner CLI permission/source changes use actor_kind `local_operator`, actor_id `demo_control`; never impersonate an analyst. Relevant dataset/operator changes during the request lifetime appear in that creator's timeline. Logs contain only allowlisted IDs/counts/reasons/hashes/versions, never selected strings or mapping tables. Earlier baseline requests have no fabricated historical events.
+
+Creator ownership is checked for timeline/audit/receipt even after source access revocation. Reading metadata history does not grant source-preview access. Another creator receives403. Unfinished requests export `receipt:null`.
+
+### Security test dashboard
+
+`GET /api/security/report` returns:
+
+```typescript
+{
+  available:boolean; stale:boolean; source_fingerprint:string;
+  report:null | {
+    schema_version:'1.1'; generated_at:string; source_revision:string|null;
+    working_tree_dirty:boolean; source_fingerprint:string;
+    total:number; passed:number; failed:number; skipped:number; duration_seconds:number;
+    receiver_mode:'local_demo';
+    controls:{id:string; title:string; status:'passed'|'failed'|'not_run'; tests:number}[];
+    tests:{id:string; status:'passed'|'failed'|'skipped'; duration_seconds:number}[];
+  }
+}
+```
+
+There is no HTTP test-execution route. `python -m app.security_report` runs the fixed test suite in a subprocess with isolated temporary storage and writes sanitized metadata. Parameterized test input strings and failure/stdout content are stripped. Source fingerprint covers backend code/tests/fixtures/dependencies and frontend source/dependencies/config. A change during execution prevents report publication; subsequent changes set `stale=true`. Missing reports return availablefalse/reportnull, never invented passing results. Runtime report is preferred, committed sanitized report is a fallback. These are editable local artifacts, not signed attestations. Receiver call claims refer to the tested adapter in isolated synthetic scenarios, not external model traffic.
+
+### Owner CLI and storage migration
+
+New local operator commands: `raw-grant`, `raw-revoke` (account/dataset), `require-person` (dataset). Each bumps the policy version and records a metadata change. Existing grant/revoke/sharing/bump-policy/edit-source also record changes. No analyst permission-edit route exists.
+
+Startup additively creates raw_grants and audit_events and adds request manual_spans/pipeline_fingerprint fields. Existing policies/permissions/source copies remain untouched; new raw access is never silently granted to an existing runtime DB.

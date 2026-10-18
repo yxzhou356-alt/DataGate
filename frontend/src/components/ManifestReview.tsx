@@ -1,16 +1,20 @@
 import type { PreviewResponse } from '../types'
 import { redactionLabel } from '../labels'
+import { MessageComparison } from './MessageComparison'
+import type { ManualSpan } from '../types'
 
 const HIDDEN = '[HIDDEN_BY_USER]'
-const TOKEN = /(\[EMAIL\]|\[PHONE\])/g
+const TOKEN = /(\[(?:EMAIL|PHONE|PERSON_\d+|MANUAL(?:_REDACTION)?|REDACTED(?:_BY_USER)?)\])/g
 
 interface Props {
   preview: PreviewResponse
   editable: boolean
   /** draft: not sent yet; sent: receiver acknowledged; not_sent: blocked, stale or unconfirmed */
-  outcome: 'draft' | 'sent' | 'not_sent'
+  outcome: 'draft' | 'sent' | 'not_sent' | 'uncertain'
   busy: boolean
   onToggle: (index: number) => void
+  onAddSpan: (span: ManualSpan) => void
+  onRemoveSpan: (span: ManualSpan) => void
 }
 
 /** Renders a retained message with mandatory redactions shown as solid bars. */
@@ -19,9 +23,9 @@ function MessageText({ text }: { text: string }) {
   return (
     <>
       {parts.map((part, i) =>
-        part === '[EMAIL]' || part === '[PHONE]' ? (
+        /^\[(?:EMAIL|PHONE|PERSON_\d+|MANUAL(?:_REDACTION)?|REDACTED(?:_BY_USER)?)\]$/.test(part) ? (
           <span key={i} className="redaction" title={`Removed by owner rule: ${part}`}>
-            <span className="redaction-label">{part === '[EMAIL]' ? 'email' : 'phone'}</span>
+            <span className="redaction-label">{part.slice(1, -1).toLowerCase()}</span>
           </span>
         ) : (
           <span key={i}>{part}</span>
@@ -31,7 +35,7 @@ function MessageText({ text }: { text: string }) {
   )
 }
 
-export function ManifestReview({ preview, editable, outcome, busy, onToggle }: Props) {
+export function ManifestReview({ preview, editable, outcome, busy, onToggle, onAddSpan, onRemoveSpan }: Props) {
   const payload = preview.outbound_payload
   if (!payload) return null
   const redactions = Object.entries(preview.redaction_counts).filter(([, n]) => n > 0)
@@ -49,11 +53,18 @@ export function ManifestReview({ preview, editable, outcome, busy, onToggle }: P
         <p>
           <strong>Hidden inside messages.</strong>{' '}
           {redactions.length === 0
-            ? 'No email addresses or phone numbers were found.'
+            ? 'No supported sensitive patterns were found.'
             : redactions.map(([t, n]) => `${n} ${redactionLabel(t)}`).join(' and ') + '.'}{' '}
           The owner requires this and it can't be undone here.
         </p>
       </div>
+
+      <div className={`detector-note ${preview.detector_status?.available ? '' : 'detector-unavailable'}`}>
+        <strong>Person-name detector: {preview.detector_status?.available ? preview.detector_status.model : 'unavailable'}</strong>
+        <p>{preview.detector_status?.available ? `Pretrained model${preview.detector_status.version ? ` v${preview.detector_status.version}` : ''}; no custom model training. Repeated detected names use stable PERSON_n placeholders within this request.` : 'Email and phone rules still run. Names and other unsupported details may be missed; this is not a guarantee of anonymity.'}</p>
+      </div>
+
+      {!preview.raw_view_allowed && <p className="raw-view-notice">Your account may process this dataset but cannot view original message text or select manual text ranges. Whole-message hiding is still available.</p>}
 
       <div className="instruction">
         <span className="instruction-label">Instruction sent with the messages</span>
@@ -64,6 +75,17 @@ export function ManifestReview({ preview, editable, outcome, busy, onToggle }: P
         {payload.messages.map((message, index) => {
           const hidden = message === HIDDEN
           const lastVisible = !hidden && visible === 1
+          const original = preview.raw_view_allowed ? preview.original_messages?.[index] : undefined
+          if (original !== undefined) return <MessageComparison
+            key={`${preview.request_id}-${preview.review_revision}-${index}`}
+            index={index} source={original} outbound={message}
+            findings={(preview.findings ?? []).filter(finding => finding.message_index === index)}
+            manualSpans={(preview.manual_spans ?? []).filter(span => span.message_index === index)}
+            editable={editable} busy={busy} lastVisible={lastVisible}
+            onToggleMessage={() => onToggle(index)}
+            onAddSpan={span => onAddSpan({ message_index: index, ...span })}
+            onRemoveSpan={span => onRemoveSpan({ message_index: index, ...span })}
+          />
           return (
             <li key={index} className={`message ${hidden ? 'is-hidden' : ''}`}>
               <span className="message-index" aria-hidden="true">{index + 1}</span>
@@ -86,10 +108,11 @@ export function ManifestReview({ preview, editable, outcome, busy, onToggle }: P
         })}
       </ol>
       <p className="manifest-foot">
-        {outcome === 'sent' && `${visible} of ${payload.messages.length} messages were sent.`}
+        {outcome === 'sent' && `The receiver acknowledged this payload. ${visible} of ${payload.messages.length} message entries retain content; hidden entries contain only placeholders.`}
         {outcome === 'not_sent' && 'Nothing from this preview was sent.'}
-        {outcome === 'draft' && `${visible} of ${payload.messages.length} messages will be sent after you approve. ` +
-          'Hiding a message replaces it with a placeholder, so the receiver still sees how many were withheld.'}
+        {outcome === 'uncertain' && 'Delivery was attempted but not confirmed. Do not assume nothing left the gateway; there is no automatic retry.'}
+        {outcome === 'draft' && `${visible} of ${payload.messages.length} message entries retain content. ` +
+          'Hiding replaces an entry with a placeholder; the receiver still sees the number of entries after approval.'}
       </p>
     </section>
   )

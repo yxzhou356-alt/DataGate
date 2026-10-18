@@ -1,6 +1,7 @@
 interface Props {
   busy: boolean
   onSelect: (accountId: string) => void
+  error?: string | null
 }
 
 const ACCOUNTS = [
@@ -8,7 +9,7 @@ const ACCOUNTS = [
   { id: 'analyst_b', name: 'RiverCo analyst', note: 'Can use RiverCo feedback' },
 ]
 
-export function AccountGate({ busy, onSelect }: Props) {
+export function AccountGate({ busy, onSelect, error }: Props) {
   return (
     <main className="gate">
       <div className="gate-inner">
@@ -20,6 +21,7 @@ export function AccountGate({ busy, onSelect }: Props) {
           Demo sign-in. Pick a seeded analyst to get a session token from the backend.
           This is a local simulation, not real authentication.
         </p>
+        {error && <p className="notice" role="alert">{error}</p>}
         <div className="gate-accounts">
           {ACCOUNTS.map((a) => (
             <button key={a.id} className="account-card" disabled={busy} onClick={() => onSelect(a.id)}>

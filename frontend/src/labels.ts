@@ -20,7 +20,7 @@ export function destinationLabel(id: string): string {
 }
 
 export function redactionLabel(type: string): string {
-  return ({ EMAIL: 'email addresses', PHONE: 'phone numbers' } as Record<string, string>)[type] ?? type
+  return ({ EMAIL: 'email addresses', PHONE: 'phone numbers', PERSON: 'person-name mentions', MANUAL: 'manual selections' } as Record<string, string>)[type] ?? type
 }
 
 export function decisionLabel(d: string): string {

@@ -56,7 +56,18 @@ export interface PreviewResponse {
   receiver_mode: string
   receiver_attempts: number
   receipt_available: boolean
+  raw_view_allowed: boolean
+  original_messages: string[] | null
+  findings: Finding[]
+  manual_spans: ManualSpan[]
+  detector_status: DetectorStatus
+  policy_explanations: PolicyExplanationRow[]
 }
+
+export interface Finding { id: string; message_index: number; start: number; end: number; category: string; replacement: string; mandatory: boolean; detector: string }
+export interface ManualSpan { message_index: number; start: number; end: number }
+export interface DetectorStatus { available: boolean; model: string; version: string | null; fingerprint: string }
+export interface PolicyExplanationRow { field: string; result: 'included' | 'excluded' | 'redacted'; explanation: string; rule_id: string }
 
 export interface ReceiverResult {
   mode: string
@@ -104,3 +115,10 @@ export interface ApiErrorBody {
   request_id: string | null
   action: string
 }
+
+export interface HistoryRow { request_id: string; dataset_id: string; purpose: string; destination: string; status: Status; decision: Decision; created_at: string; occurred_at: string | null; receiver_attempts: number; review_revision: number | null }
+export interface HistoryResponse { requests: HistoryRow[]; total: number }
+export interface AuditEvent { event_id: string; event_type: string; actor_kind: string; actor_id: string; occurred_at: string; metadata: Record<string, unknown> }
+export interface AuditResponse { schema_version: '1.1'; request: HistoryRow; events: AuditEvent[]; receipt: Receipt | null }
+export interface SecurityReport { schema_version: string; generated_at: string; source_revision: string | null; working_tree_dirty: boolean; source_fingerprint: string; total: number; passed: number; failed: number; skipped: number; duration_seconds: number; receiver_mode: string; controls: { id: string; title: string; status: 'passed' | 'failed' | 'not_run'; tests: number }[]; tests: { id: string; status: string; duration_seconds: number }[] }
+export interface SecurityReportResponse { available: boolean; stale: boolean; source_fingerprint: string; report: SecurityReport | null }

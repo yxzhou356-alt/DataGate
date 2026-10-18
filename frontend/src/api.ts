@@ -1,6 +1,6 @@
 // Thin client for the DataGate v1 API. The token lives in memory only.
 import type {
-  ApiErrorBody, DatasetSummary, PreviewResponse, Receipt, SendResponse, SessionResponse,
+  ApiErrorBody, AuditResponse, DatasetSummary, HistoryResponse, ManualSpan, PreviewResponse, Receipt, SecurityReportResponse, SendResponse, SessionResponse,
 } from './types'
 
 export class ApiError extends Error {
@@ -24,7 +24,7 @@ async function call<T>(method: string, path: string, token: string | null, body?
   if (token) headers['Authorization'] = `Bearer ${token}`
   let resp: Response
   try {
-    resp = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+    resp = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store' })
   } catch {
     throw new ApiError(0, {
       code: 'BACKEND_UNREACHABLE',
@@ -51,10 +51,12 @@ export const api = {
   preview: (token: string, datasetId: string, purpose: string, destination: string) =>
     call<PreviewResponse>('POST', '/requests/preview', token, { dataset_id: datasetId, purpose, destination }),
 
-  review: (token: string, requestId: string, expectedRevision: number, hide: number[]) =>
+  review: (token: string, requestId: string, expectedRevision: number, previewHash: string, hide: number[], manualSpans: ManualSpan[]) =>
     call<PreviewResponse>('PATCH', `/requests/${encodeURIComponent(requestId)}/review`, token, {
       expected_review_revision: expectedRevision,
+      expected_preview_hash: previewHash,
       hide_message_indices: hide,
+      manual_spans: manualSpans,
     }),
 
   send: (token: string, requestId: string, expectedRevision: number, previewHash: string) =>
@@ -66,4 +68,13 @@ export const api = {
 
   receipt: (token: string, requestId: string) =>
     call<Receipt>('GET', `/requests/${encodeURIComponent(requestId)}/receipt`, token),
+
+  history: (token: string, filters: { dataset_id?: string; decision?: string; user_id?: string } = {}) => {
+    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined && value !== ''))
+    return call<HistoryResponse>('GET', `/history${query.size ? `?${query}` : ''}`, token)
+  },
+
+  audit: (token: string, requestId: string) => call<AuditResponse>('GET', `/requests/${encodeURIComponent(requestId)}/audit`, token),
+  timeline: (token: string, requestId: string) => call<{ request_id: string; events: AuditResponse['events'] }>('GET', `/requests/${encodeURIComponent(requestId)}/timeline`, token),
+  securityReport: (token: string) => call<SecurityReportResponse>('GET', '/security/report', token),
 }

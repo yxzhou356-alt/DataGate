@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS requests (
 
 JSON_COLUMNS = {
     "reason_codes", "hidden_indices", "redaction_counts", "dropped_fields", "receiver_result",
-    "allowed_purposes", "allowed_destinations", "outbound_fields", "required_redactions",
+    "allowed_purposes", "allowed_destinations", "outbound_fields", "required_redactions", "manual_spans", "metadata",
 }
 
 
@@ -93,6 +93,7 @@ class Policy:
     outbound_fields: dict[str, list[str]]
     sharing_mode: str
     required_redactions: tuple[str, ...]
+    raw_accounts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -118,6 +119,21 @@ class Store:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(SCHEMA)
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS raw_grants (
+                    dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id),
+                    account_id TEXT NOT NULL REFERENCES accounts(account_id),
+                    PRIMARY KEY(dataset_id, account_id));
+                CREATE TABLE IF NOT EXISTS audit_events (
+                    event_id TEXT PRIMARY KEY, request_id TEXT, dataset_id TEXT NOT NULL,
+                    account_id TEXT, event_type TEXT NOT NULL, actor_kind TEXT NOT NULL,
+                    actor_id TEXT NOT NULL, occurred_at TEXT NOT NULL, metadata TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS event_request_idx ON audit_events(request_id, occurred_at);
+            """)
+            columns = {r["name"] for r in conn.execute("PRAGMA table_info(requests)")}
+            for name, definition in {"manual_spans": "TEXT NOT NULL DEFAULT '[]'", "pipeline_fingerprint": "TEXT"}.items():
+                if name not in columns:
+                    conn.execute(f"ALTER TABLE requests ADD COLUMN {name} {definition}")
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -160,6 +176,8 @@ class Store:
                     "SELECT account_id FROM grants WHERE dataset_id = ? ORDER BY account_id", (dataset_id,)
                 )
             ]
+            raw_accounts = [r[0] for r in conn.execute(
+                "SELECT account_id FROM raw_grants WHERE dataset_id = ? ORDER BY account_id", (dataset_id,))]
         p = _decode(row)
         return Policy(
             dataset_id=p["dataset_id"],
@@ -170,6 +188,7 @@ class Store:
             outbound_fields=p["outbound_fields"],
             sharing_mode=p["sharing_mode"],
             required_redactions=tuple(p["required_redactions"]),
+            raw_accounts=tuple(raw_accounts),
         )
 
     # ---- owner operations (used by seed + demo_control CLI) -------------
@@ -183,7 +202,10 @@ class Store:
         cols = ", ".join(encoded)
         marks = ", ".join("?" for _ in encoded)
         with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             conn.execute(f"INSERT INTO requests ({cols}) VALUES ({marks})", tuple(encoded.values()))
+            self.event(conn, values, "preview" if values["status"] == "ready" else "blocked")
+            conn.execute("COMMIT")
 
     def get_request(self, request_id: str) -> dict[str, Any] | None:
         with self.connect() as conn:
@@ -197,5 +219,61 @@ class Store:
         where = " AND ".join(f"{k} = ?" for k in expected)
         sql = f"UPDATE requests SET {sets} WHERE request_id = ?" + (f" AND {where}" if where else "")
         with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             cur = conn.execute(sql, (*encoded.values(), request_id, *expected.values()))
+            if cur.rowcount == 1:
+                row = _decode(conn.execute("SELECT * FROM requests WHERE request_id = ?", (request_id,)).fetchone())
+                kind = {"sending": "send_claimed", "sent": "send", "send_failed": "send_failed",
+                        "blocked": "blocked", "stale": "approval_invalidated"}.get(values.get("status"), "review")
+                self.event(conn, row, kind)
+            conn.execute("COMMIT")
             return cur.rowcount == 1
+
+
+    def has_raw_access(self, account_id: str, dataset_id: str) -> bool:
+        pol = self.get_policy(dataset_id)
+        return bool(pol and account_id in pol.allowed_accounts and account_id in pol.raw_accounts)
+
+    @staticmethod
+    def event(conn, request, kind):
+        # Explicit allowlist: never persist source text, mappings, prompts or selections.
+        import secrets
+        from datetime import datetime, timezone
+        metadata = {key: request.get(key) for key in (
+            "status", "decision", "reason_codes", "review_revision", "preview_hash",
+            "receiver_attempts", "preview_policy_version", "final_policy_version", "redaction_counts")
+            if request.get(key) is not None}
+        metadata["manual_redactions"] = len(request.get("manual_spans", []))
+        conn.execute("INSERT INTO audit_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (
+            "evt_" + secrets.token_hex(12), request["request_id"], request["dataset_id"],
+            request["account_id"], kind, "analyst", request["account_id"],
+            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), json.dumps(metadata)))
+
+    def history(self, account_id: str, dataset_id=None, decision=None) -> list[dict]:
+        where, args = ["account_id = ?"], [account_id]
+        for key, value in (("dataset_id", dataset_id), ("decision", decision)):
+            if value:
+                where.append(f"{key} = ?")
+                args.append(value)
+        with self.connect() as conn:
+            rows = conn.execute("SELECT * FROM requests WHERE " + " AND ".join(where)
+                                + " ORDER BY created_at DESC, request_id DESC LIMIT 200", args).fetchall()
+        return [self.history_row(_decode(r)) for r in rows]
+
+    @staticmethod
+    def history_row(req):
+        return {key: req[key] for key in ("request_id", "dataset_id", "purpose", "destination", "status",
+                    "decision", "created_at", "occurred_at", "receiver_attempts", "review_revision")}
+
+    def timeline(self, req):
+        # Dataset events only become visible when they concern the requester and
+        # occurred during its lifetime. Older baseline rows get no invented events.
+        with self.connect() as conn:
+            rows = conn.execute("""SELECT event_id,event_type,actor_kind,actor_id,occurred_at,metadata
+                FROM audit_events WHERE request_id = ? OR
+                (request_id IS NULL AND dataset_id = ? AND (account_id IS NULL OR account_id = ?)
+                 AND occurred_at >= ? AND (? IS NULL OR occurred_at <= ?))
+                ORDER BY occurred_at, event_id""", (
+                    req["request_id"], req["dataset_id"], req["account_id"], req["created_at"],
+                    req["occurred_at"], req["occurred_at"])).fetchall()
+        return [_decode(row) for row in rows]

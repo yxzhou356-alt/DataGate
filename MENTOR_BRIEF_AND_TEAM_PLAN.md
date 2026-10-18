@@ -1,3 +1,5 @@
+> Historical planning guide. The implemented six-feature branch is documented in README.md, PROJECT_CONTEXT.md, API_CONTRACT.md, TEAM_WORKFLOW.md and FEATURE_HANDOFF.md. Those current files take precedence over older phase/status/assignment statements below.
+
 # DataGate mentor brief and current team approach
 
 Team: Priyanka, Ishita, Yuxin, Aishwarya.

@@ -30,7 +30,7 @@ DEFAULT_POLICY = {
     "allowed_destinations": ["demo_receiver"],
     "outbound_fields": {"feedback_summary": ["message"]},
     "sharing_mode": "redacted_only",
-    "required_redactions": ["EMAIL", "PHONE"],
+    "required_redactions": ["EMAIL", "PHONE", "PERSON"],
 }
 
 
@@ -64,6 +64,7 @@ def seed(settings: Settings, reset: bool = False) -> Store:
                 ),
             )
             conn.execute("INSERT INTO grants VALUES (?, ?)", (dataset_id, account))
+        conn.execute("INSERT INTO raw_grants VALUES (?, ?)", ("feedback_a", "analyst_a"))
         conn.execute("COMMIT")
     return store
 

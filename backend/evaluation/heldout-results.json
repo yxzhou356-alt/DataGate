@@ -1,0 +1,350 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-10-18T05:19:17.213240+00:00",
+  "revision": {
+    "commit": "21f5abcb69a5962c84335559bf723f18b74e6b17",
+    "dirty": true
+  },
+  "split": "heldout",
+  "example_count": 40,
+  "implementation_hashes": {
+    "detector": "40cf9b700f60d8363e001c1d58e0adb258a93a7359206dcd434b185f63f702e5",
+    "rules": "c07a5311ce508d2e2e6c0ee07076486ced3bc6c081a32f4b4c3303781ce2de56",
+    "evaluator": "57e41207f857e79de81120a86b5b0640a76b8af1fc4400f823e4a69a95f830ef"
+  },
+  "corpus_sha256": "24b2f9e0beab070874872b1c72c1c24f283eb578a5b3c7c45913ba6ffeb1d5b3",
+  "matching": "exact_start_end_and_category",
+  "offset_unit": "unicode_codepoint",
+  "model": {
+    "available": true,
+    "model": "en_core_web_sm",
+    "model_version": "3.8.0",
+    "version": "3.8.0",
+    "spacy_version": "3.8.16",
+    "detector_version": "person-v1",
+    "language": "en",
+    "offset_unit": "unicode_codepoint",
+    "implementation_sha256": "40cf9b700f60d8363e001c1d58e0adb258a93a7359206dcd434b185f63f702e5",
+    "artifact_hashes": {
+      "config.cfg": "65c545ca2da5bd4b87b22d4917318605360b37dee6ed6b18516a036f87319f79",
+      "ner/model": "cd93e9ca9126c69f1d10a1039ef67c3d9ec1223b44d079856705970f0f19ff4e",
+      "tok2vec/model": "e84fc06eb319c94d28e460fc334e292120b01f18baa5dc8b50c977459820a090"
+    },
+    "fingerprint": "2c29677cfacf096ca0ec80531e6e938966afbdfb3554a8bd16f108e563ee6272"
+  },
+  "status": "complete",
+  "rules_only": {
+    "per_category": {
+      "EMAIL": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "support": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "PHONE": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "support": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "PERSON": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 25,
+        "support": 25,
+        "precision": null,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "micro": {
+      "tp": 8,
+      "fp": 0,
+      "fn": 25,
+      "support": 33,
+      "precision": 1.0,
+      "recall": 0.24242424242424243,
+      "f1": 0.3902439024390244
+    },
+    "errors": [
+      {
+        "example_id": "heldout-001",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 17,
+        "end": 30
+      },
+      {
+        "example_id": "heldout-002",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 23,
+        "end": 34
+      },
+      {
+        "example_id": "heldout-003",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 5,
+        "end": 12
+      },
+      {
+        "example_id": "heldout-004",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 26,
+        "end": 39
+      },
+      {
+        "example_id": "heldout-005",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 10,
+        "end": 23
+      },
+      {
+        "example_id": "heldout-006",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 25,
+        "end": 40
+      },
+      {
+        "example_id": "heldout-007",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 6,
+        "end": 17
+      },
+      {
+        "example_id": "heldout-008",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 13,
+        "end": 26
+      },
+      {
+        "example_id": "heldout-009",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 31,
+        "end": 44
+      },
+      {
+        "example_id": "heldout-010",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 27,
+        "end": 37
+      },
+      {
+        "example_id": "heldout-011",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 0,
+        "end": 11
+      },
+      {
+        "example_id": "heldout-011",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 17,
+        "end": 27
+      },
+      {
+        "example_id": "heldout-012",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 13,
+        "end": 19
+      },
+      {
+        "example_id": "heldout-013",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 18,
+        "end": 21
+      },
+      {
+        "example_id": "heldout-014",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 14,
+        "end": 18
+      },
+      {
+        "example_id": "heldout-015",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 17,
+        "end": 27
+      },
+      {
+        "example_id": "heldout-016",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 18,
+        "end": 29
+      },
+      {
+        "example_id": "heldout-017",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 0,
+        "end": 15
+      },
+      {
+        "example_id": "heldout-018",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 25,
+        "end": 36
+      },
+      {
+        "example_id": "heldout-019",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 14,
+        "end": 20
+      },
+      {
+        "example_id": "heldout-020",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 0,
+        "end": 12
+      },
+      {
+        "example_id": "heldout-025",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 0,
+        "end": 11
+      },
+      {
+        "example_id": "heldout-026",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 11,
+        "end": 22
+      },
+      {
+        "example_id": "heldout-027",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 16,
+        "end": 24
+      },
+      {
+        "example_id": "heldout-028",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 5,
+        "end": 13
+      }
+    ]
+  },
+  "rules_plus_ner": {
+    "per_category": {
+      "EMAIL": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "support": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "PHONE": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "support": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "PERSON": {
+        "tp": 21,
+        "fp": 3,
+        "fn": 4,
+        "support": 25,
+        "precision": 0.875,
+        "recall": 0.84,
+        "f1": 0.8571428571428571
+      }
+    },
+    "micro": {
+      "tp": 29,
+      "fp": 3,
+      "fn": 4,
+      "support": 33,
+      "precision": 0.90625,
+      "recall": 0.8787878787878788,
+      "f1": 0.8923076923076924
+    },
+    "errors": [
+      {
+        "example_id": "heldout-013",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 18,
+        "end": 21
+      },
+      {
+        "example_id": "heldout-014",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 14,
+        "end": 18
+      },
+      {
+        "example_id": "heldout-015",
+        "kind": "fp",
+        "entity_type": "PERSON",
+        "start": 22,
+        "end": 27
+      },
+      {
+        "example_id": "heldout-015",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 17,
+        "end": 27
+      },
+      {
+        "example_id": "heldout-017",
+        "kind": "fp",
+        "entity_type": "PERSON",
+        "start": 4,
+        "end": 15
+      },
+      {
+        "example_id": "heldout-017",
+        "kind": "fn",
+        "entity_type": "PERSON",
+        "start": 0,
+        "end": 15
+      },
+      {
+        "example_id": "heldout-040",
+        "kind": "fp",
+        "entity_type": "PERSON",
+        "start": 33,
+        "end": 38
+      }
+    ]
+  },
+  "limitations": [
+    "Small hand-labelled synthetic convenience set; not production accuracy.",
+    "No model training or tuning on this heldout set; template diversity is limited.",
+    "Exact-span errors include partial-name boundary mismatches.",
+    "Undefined precision/recall is null; no text or raw entity values in this report."
+  ]
+}

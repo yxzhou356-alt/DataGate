@@ -1,5 +1,6 @@
 import type { Receipt, SendResponse } from '../types'
 import { decisionLabel } from '../labels'
+import { downloadJson } from '../download'
 
 interface Props {
   receipt: Receipt | null
@@ -14,7 +15,7 @@ const STAMPS: Record<string, { label: string; tone: string; text: string }> = {
 }
 
 const REASONS: Record<string, string> = {
-  REDACTION_REQUIRED: 'Email addresses or phone numbers were hidden',
+  REDACTION_REQUIRED: 'Supported identifiers were hidden by owner rules',
   PURPOSE_NOT_ALLOWED: 'The owner does not allow this purpose',
   DESTINATION_NOT_ALLOWED: 'The owner does not allow this destination',
   SHARING_PROHIBITED: 'The owner does not allow this dataset to be shared',
@@ -29,6 +30,7 @@ export function OutcomePanel({ receipt, sendResult, onStartOver }: Props) {
     <section className="outcome" aria-live="polite">
       <div className={`stamp stamp-${stamp.tone}`} role="status">{stamp.label}</div>
       <p className="outcome-text">{stamp.text}</p>
+      <div className="receiver-call-counter"><strong>{receipt.receiver_attempts}</strong><span>actual adapter call{receipt.receiver_attempts === 1 ? '' : 's'} for this request</span></div>
       {receipt.reason_codes.length > 0 && (
         <ul className="reasons">
           {receipt.reason_codes.map((c) => <li key={c}>{REASONS[c] ?? c}</li>)}
@@ -60,6 +62,7 @@ export function OutcomePanel({ receipt, sendResult, onStartOver }: Props) {
         <Row k="Receiver" v={`${receipt.receiver_mode}, ${receipt.receiver_attempts} call${receipt.receiver_attempts === 1 ? '' : 's'}`} />
         <Row k="Recorded" v={receipt.occurred_at ? new Date(receipt.occurred_at).toLocaleString() : '—'} />
       </dl>
+      <button className="btn btn-secondary" onClick={() => downloadJson(receipt, `datagate-receipt-${receipt.request_id}.json`)}>Download receipt JSON</button>
       <button className="btn btn-secondary" onClick={onStartOver}>Start a new request</button>
     </section>
   )

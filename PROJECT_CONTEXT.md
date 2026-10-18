@@ -1,186 +1,62 @@
 # DataGate — authoritative project context
 
-Status: planning packet; baseline implementation has not started as of this packet's preparation. All human work assignments are UNASSIGNED.
+Status: teammate baseline `base-line`/`21f5abc` reviewed and extended in `codex/six-governance-features` under Priyanka's explicit six-feature assignment. This document owns scope; API_CONTRACT owns interfaces. Earlier planning guides are historical. Human acceptance on a second laptop remains to be recorded.
 
-## 1. Team, event, and goal
+## Team and purpose
 
-Team: Priyanka, Ishita, Yuxin, Aishwarya. All have programming experience; this is their first hackathon.
+Priyanka, Ishita, Yuxin and Aishwarya are USC MSCS students building their first hackathon project. The aim is a sensible company workflow, useful engineering experience and an honest portfolio demo. The team's event packet names the AI Data Governance track at USC ACM TrojanHacks. No hiring or winning outcome is promised.
 
-Event: USC ACM TrojanHacks, October 17–18, 2026. Track: AI Data Governance. Submission deadline: Sunday October 18, noon America/Los_Angeles; target submission 11:15 a.m. Presentations: four minutes, then one minute Q&A in preliminaries; finalists have three minutes Q&A.
+Problem: a support analyst wants an AI service to summarize complaints. The source contains identifying information and irrelevant business fields. A company needs to decide who may use it, for which purpose and destination, minimize what leaves, let the requester hide more, check again before dispatch, and retain inspectable evidence.
 
-The packet conflicts about Saturday venue closing (7 p.m. versus 10 p.m.). Follow organizer clarification and prepare to relocate by 7 p.m. No overnight room access is promised.
+The analyst uses the DataGate UI. The backend has the synthetic source CSVs and owner policies. The receiving service has no direct spreadsheet/database access. This prototype governs its own gateway path, not all employee traffic or recipient behavior.
 
-Goals: a meaningful company workflow, an honest working demo, learning, and a portfolio artifact for software/AI/data roles. No company/judge interest or winning outcome is guaranteed.
+## Existing app and the assigned six layers
 
-The supplied judging rubric is 25% problem/impact, 25% technical execution/completeness, 25% UX/design, 15% innovation and 10% demo/presentation. This favors a complete, understandable workflow and demonstrated behavior over a long list of unfinished features.
+Preserve React + TypeScript + Vite, Python FastAPI/Pydantic, sqlite3, standard CSV/regex/JSON/SHA-256 and pytest. Added local spaCy `en_core_web_sm` PERSON inference; no training/vector database. No external AI receiver/API key is part of this assignment.
 
-The team's supplied judge list names Kaushal Patel (OpenAI), Franck Leveneur (Data-Sleek; formerly Hulu), Saty Raghavachary (USC) and Chris Lin (Cylier; formerly Uber). These affiliations are event context supplied by the team, not independently verified hiring leads. Explain concrete value and tradeoffs; do not infer individual judges' preferences.
+1. Interactive review: separate raw-message authorization, source/outbound comparison, highlighted detections, optional manual source spans and whole-message hiding, locked mandatory redactions.
+2. Security dashboard: actual recorded isolated pytest evidence, six control groups, source fingerprints and stale/missing state. No HTTP test runner or invented zero-call count.
+3. Creator-scoped history, real metadata events, filters and JSON audit export, including operator permission changes. No raw values/mapping in events or receipts.
+4. Request-scoped stable pseudonyms for equal detected name surfaces. Baseline EMAIL/PHONE generic markers remain. Names are case-folded/whitespace-normalized, not aliases resolved.
+5. Explanations from actual field-minimization policy, mandatory redaction counts and additional hiding choices.
+6. Local pretrained English PERSON detector, explicit missing/inference failure handling and a held-out hand-labeled synthetic evaluation.
 
-## 2. Final product direction
+## Demo data, access and owner configuration
 
-DataGate combines:
-- DataGate: dataset rules, purpose/destination policy, minimized outbound data.
-- Bouncer: reviewable content and additional permitted hiding.
-- AccessCheck-inspired checks: authorization, revocation, stale approvals, repeatable regression evidence.
-- Light input validation only, not the full BatchGuard model-impact product.
+- analyst_a / MapleCo may process feedback_a; fresh seed also grants raw retained-message review.
+- analyst_b / RiverCo may process feedback_b; raw original text is not authorized by default.
+- Each dataset starts with10 synthetic rows. Fields: ticket_id, customer_name, email, phone, plan_tier, account_value, product_area, message.
+- Implemented purpose feedback_summary requires message only; destination demo_receiver. model_training/public_chatbot are blocked demonstrations, not implemented operations.
+- Fresh policies require EMAIL, PHONE and PERSON; unsupported mandatory detectors/templates fail closed. sharing_mode none blocks even transformed data; redacted_only permits only the configured pipeline, without promising anonymity.
 
-Tagline: Permission, review, and evidence before data reaches AI.
+Owner setup is backend seed plus local demo_control CLI. There is no analyst grant-edit route or owner admin website. Demo token selection is simulated authentication: anyone running the local demo can select either account. Protected operations derive identity from the backend-issued token, not caller role/user fields.
 
-Problem statement:
-A support analyst wants AI to summarize customer complaints. The source contains identifying information and customer-specific records. The company needs to control who may use each dataset, for what task and destination, what content leaves, and whether permission still exists when sending.
+Raw-message grants are distinct from processing access and require it. Only message originals may be returned; dropped columns remain backend-held. A transformed-only analyst can hide whole messages, but cannot submit source-offset manual selections. Existing runtime grants/policies are preserved by migration, not silently expanded; see README upgrade commands.
 
-The prototype governs its configured gateway path. It does not monitor all employee traffic or control recipients after delivery.
+## Authoritative flow and binding
 
-## 3. People and access
+1. Authenticate demo session; list authorized dataset metadata.
+2. On preview, check access, purpose/destination/sharing and supported processing. Strictly parse UTF-8 CSV; reject missing/nonempty required columns, malformed quoting and ragged rows without echoing values.
+3. Minimize fields first, then detect EMAIL/PHONE/PERSON in retained messages. Resolve overlaps without losing mandatory coverage. Equal detected names receive request-scoped tokens before optional hiding.
+4. Return canonical outbound payload/hash, findings and explanations. Include original messages only with separate current raw access.
+5. Review validates complete optional source spans and message hides, reconstructs on backend, increments revision/hash. It cannot accept arbitrary outgoing text or unredact owner rules.
+6. Send checks creator/current access, current source revision/hash, full policy/raw-grant version/fingerprint, detector/model/transformation fingerprint, review revision and canonical payload hash.
+7. A conditional atomic ready->sending claim permits only one adapter invocation. No automatic retries.
+8. Local receiver captures exactly the approved bytes in memory and acknowledges them, explicitly stating no external AI model was called.
+9. Metadata transitions/events/receipt are recorded. The creator can read metadata after dataset revocation, without renewed source-preview access.
 
-- Dataset owner/admin: registers source data and configures policies. Baseline setup is seeded on the backend; no administration website is required.
-- Analyst: uses the interface to choose an authorized dataset, choose a task, inspect an outbound preview, and approve sending.
-- DataGate backend: holds source CSVs, authoritative policies, sessions, transformations and dispatch state.
-- Receiver: receives only the prepared payload, never the original spreadsheet.
+Policy is reread on protected steps, not startup cached. Changed content/policy/model requires a new preview. Required detector failures block with no dispatch. Owner changes and request events use actual transactions; older baseline rows have no fabricated event history.
 
-The AI service has no direct spreadsheet/database access. Analysts receive no unauthorized dataset content. Two customer datasets are separate server-held fixtures.
+## Evidence and limits
 
-Baseline identity is a clearly labeled demo account selector that obtains a server-issued token for one of two seeded accounts. Anyone running this local demo can select a demo account: this is not production authentication. Subsequent authorization checks use the token's backend identity, not caller-supplied user_id/role.
+Tests use isolated temporary databases/sources and inspect the capturing adapter, including allowed and blocked cases, tampering, revocation, source/policy/model staleness, duplicate/concurrent Send and metadata privacy. The dashboard records actual statuses/times and sanitized test IDs; it does not stream model traffic. Reports are local editable artifacts, not signed attestations.
 
-## 4. Frozen baseline stack
+The held-out synthetic corpus has40 examples/25 PERSON gold spans. The recorded English model run gives PERSON precision87.5%, recall84% (exact span/category). It can miss names or redact product terms/Spanish words. The sample is small; no broad detection/privacy claim follows. Addresses, arbitrary secrets, multilingual coverage and entity alias resolution are outside scope.
 
-- Frontend: React + TypeScript + Vite, one small application, no routing/UI framework required.
-- Backend: Python + FastAPI + Pydantic.
-- Persistence: Python sqlite3 for metadata, requests and receipts; raw synthetic CSVs in backend-accessible fixtures.
-- Transformations: Python csv, re, json and hashlib.
-- Tests: pytest + FastAPI TestClient/httpx.
-- Receiver: local capturing adapter, no external API key.
-- One backend worker; short-lived sessions/draft payloads may be in memory. Restarted/expired drafts require a new preview.
+Pseudonyms are linkable within a request, not anonymous identities. Analyst approval is not verified customer consent. Metadata hashes/logs do not establish regulatory compliance or tamperproof storage. Local revocation checks cannot retract content already viewed/sent and are not distributed atomic cancellation.
 
-Use compatible installed runtimes and record actual dependency versions in manifests/lockfiles. Inspect the environment before installing. Do not invent version requirements or rewrite the stack independently.
+## Remaining work and collaboration
 
-Keep useful module boundaries for later parallel work: backend policy evaluation, transformations, storage, request workflow and receiver adapter should be identifiable without reading one giant file. Separate frontend API/types from review and outcome components. The baseline owner chooses the small concrete layout and documents its actual files and extension points in the handoff; do not build a generic plugin framework.
+Follow TEAM_WORKFLOW, README and FEATURE_HANDOFF for the branch, actual verification and clean setup. Another teammate should reproduce the demo before merging/submitting. Human future assignments are not preselected. Each assistant needs a bounded task and separate clone/worktree.
 
-## 5. Frozen data and identifiers
-
-Accounts:
-- analyst_a: MapleCo analyst; may use feedback_a.
-- analyst_b: RiverCo analyst; may use feedback_b.
-
-Datasets:
-- feedback_a: MapleCo feedback, initially 10 synthetic rows.
-- feedback_b: RiverCo feedback, initially 10 synthetic rows.
-
-Fixture columns:
-ticket_id, customer_name, email, phone, plan_tier, account_value, product_area, message.
-
-Read values as strings. At minimum ticket_id and nonempty message must be present. Unexpected columns must never be forwarded automatically. Preserve quoted CSV fields and Unicode. Never silently repair/drop rows.
-
-Purpose: feedback_summary. A model_training request may be submitted as a blocked demonstration, but no training operation is implemented.
-
-Destination: demo_receiver, a backend-configured identifier. No caller-provided destination URL.
-
-Both sample policies authorize only the corresponding analyst, feedback_summary and demo_receiver, with message as the only outbound field. Supported required redaction types are EMAIL and PHONE.
-
-Example:
-Input message: The reset link expired. Please contact emma@example.com.
-Outbound message: The reset link expired. Please contact [EMAIL].
-
-Customer name, account value, email column, etc. are excluded regardless of whether their particular values are detected inside a message. Scan the retained message for embedded supported identifiers. Baseline does not automatically detect all names, health information, addresses, or arbitrary secrets.
-
-## 6. Owner policy
-
-Configure for each dataset:
-- dataset ID, declared owner/source, source revision.
-- allowed account IDs.
-- allowed purposes.
-- allowed destination IDs.
-- purpose-specific outbound fields.
-- sharing_mode: redacted_only or none.
-- required redaction types.
-- policy_version plus an internal fingerprint of the current policy.
-
-redacted_only means the configured minimization/redaction pipeline must be applied; it does not promise complete anonymity. none blocks any sharing, even after redaction.
-
-Owner rules always win. Requester choices may hide additional content, not add excluded fields or reverse mandatory hiding.
-
-Baseline review choices are deliberately simple: optionally hide selected whole message entries after mandatory redaction. Use zero-based message indices under the immutable source revision. Replace these entries with [HIDDEN_BY_USER]. No generic span editor or second purpose is needed.
-
-## 7. End-to-end flow
-
-1. Owner setup seeds source fixtures and rules.
-2. Analyst selects a demo account and receives a token.
-3. GET datasets lists only their accessible metadata.
-4. Analyst requests feedback_summary through demo_receiver.
-5. Backend checks identity, dataset access, purpose/destination, sharing mode and minimum input validity.
-6. Backend retains message only, then redacts supported email/phone spans.
-7. Backend returns the exact receiver payload preview, hash, reason codes, counts and review revision.
-8. Additional hiding changes the preview and increments review_revision.
-9. Analyst approves the current revision/hash and presses Send.
-10. Backend rechecks current access, source bytes/revision, current policy/fingerprint, review and payload. Changed data/policy requires a fresh preview; revoked access blocks.
-11. Backend atomically marks a ready request sending. Only the winning dispatch may invoke the adapter.
-12. Local receiver captures the prepared content and returns an acknowledgement labeled local_demo.
-13. Backend records sent or send_failed and a metadata-only receipt.
-
-Source/policy checks must use current data, not only startup-cached metadata. The policy version is incremented for legitimate changes, while fingerprints also detect an out-of-band change.
-
-Permission revocation applies to future dispatch checks. It cannot recall already sent content or erase a previously viewed preview. This is not a distributed atomic-revocation system.
-
-## 8. Actual local receiver
-
-Use one adapter entry point: send(request_id, payload_bytes).
-
-The local adapter really receives/captures those bytes in memory and records request-scoped invocations. It returns an acknowledgement such as:
-mode=local_demo, acknowledged=true, message_count=10, note=No external AI model was called.
-
-Do not label this canned acknowledgement as generated AI analysis. No public endpoint should expose all captured payloads. Tests inspect the injected capturing adapter directly.
-
-All future provider integration must use this same dispatch boundary. Count actual adapter invocations, not a manually set dashboard value. Failed/uncertain delivery still counts an invocation; do not call it zero attempts.
-
-## 9. States and interface authority
-
-Wire formats, enum spellings, routes, hashes and errors are defined ONLY in API_CONTRACT.md.
-
-Policy decision: allow, redact, block.
-Request status: ready, blocked, stale, sending, sent, send_failed.
-
-ready means prepared and awaiting explicit approval, not previously authorized forever.
-
-The backend owns source, identity, policies, transformed payload and dispatch state. The frontend owns display/interaction only. Send submits approval of an existing draft, not raw replacement content.
-
-## 10. Baseline definition of done
-
-A second teammate must be able to start the app from README instructions and demonstrate:
-1. Authorized dataset selection and a real transformed preview.
-2. Message-only outbound fields with supported email/phone spans hidden.
-3. Approved content reaches the local receiver exactly once and matches the preview hash/content.
-4. Other accounts cannot access the dataset, draft, review or receipt.
-5. Forbidden purposes/destinations/sharing mode make zero adapter calls.
-6. Mandatory redaction cannot be undone via request-body tampering.
-7. Revocation after preview blocks Send.
-8. Changed source/policy/review makes the previous approval invalid.
-9. Duplicate/concurrent Send makes no second invocation.
-10. Receiver errors produce an honest failure outcome.
-11. Receipts exclude raw values/full messages/prompts and state the real receiver mode.
-12. Backend tests pass, frontend builds, and actual startup/verification commands are documented.
-
-Use isolated temporary databases/fixtures in tests; never mutate the team's demonstration database during tests.
-
-## 11. Deferred layers
-
-Only after accepting the baseline:
-- Better review cards and additional hiding UX.
-- More policy tests and a factual regression summary.
-- Duplicate-ticket/readiness checks and clear row-level errors.
-- One real provider, if a human assigns a provider/credentials.
-- One pretrained person-name detector with a labeled evaluation.
-- Hash-chain receipts with verification and a separately retained checkpoint.
-
-Defer: full BatchGuard scoring pipeline, bank lineage/FinGuard, invoice matching, RAG/vector database, generic file uploads, OCR/PDFs, free-form SQL/policy generation, custom training, enterprise authentication and deployment infrastructure.
-
-Purpose-specific field selection and user review do not establish regulatory compliance. Analyst approval is not automatically customer consent. A receipt/hash is evidence about this gateway's processing, not proof of complete privacy or recipient behavior.
-
-## 12. Team status
-
-Names: Priyanka, Ishita, Yuxin, Aishwarya.
-All implementation assignments: UNASSIGNED.
-Baseline assistant owner: UNASSIGNED.
-Integration owner: UNASSIGNED.
-Accepted baseline commit: NOT YET AVAILABLE.
-
-The human team will decide ownership. Use TEAM_WORKFLOW.md and the prompts directory. No assistant may infer an assignment from an older document.
+Deferred unless explicitly assigned: real provider, enterprise login, editable admin UI, uploads, hash-chain receipts, RAG/vector search, full BatchGuard scoring, banking lineage, custom training and deployment infrastructure. All real provider calls, if later assigned, must use the existing sole receiver adapter boundary.

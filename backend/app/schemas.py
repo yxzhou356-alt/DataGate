@@ -27,9 +27,17 @@ class PreviewBody(_Strict):
     destination: Identifier  # a configured identifier, never a URL
 
 
+class ManualSpan(_Strict):
+    message_index: Annotated[StrictInt, Field(ge=0)]
+    start: Annotated[StrictInt, Field(ge=0)]
+    end: Annotated[StrictInt, Field(ge=1)]
+
+
 class ReviewBody(_Strict):
     expected_review_revision: Annotated[StrictInt, Field(ge=1)]
     hide_message_indices: Annotated[list[StrictInt], Field(max_length=10_000)]
+    manual_spans: Annotated[list[ManualSpan], Field(max_length=1_000)] | None = None
+    expected_preview_hash: Annotated[str, StringConstraints(strict=True, pattern=r"^[0-9a-f]{64}$")] | None = None
 
 
 class SendBody(_Strict):

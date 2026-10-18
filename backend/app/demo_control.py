@@ -24,10 +24,12 @@ from .seed import seed
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m app.demo_control")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    for name in ("revoke", "grant"):
+    for name in ("revoke", "grant", "raw-grant", "raw-revoke"):
         p = sub.add_parser(name)
         p.add_argument("--account", required=True)
         p.add_argument("--dataset", required=True)
+    p = sub.add_parser("require-person", help="enable local PERSON detection in an existing owner policy")
+    p.add_argument("--dataset", required=True)
     p = sub.add_parser("sharing", help="set sharing_mode (redacted_only | none)")
     p.add_argument("--dataset", required=True)
     p.add_argument("--mode", required=True, choices=["redacted_only", "none"])
@@ -49,6 +51,7 @@ def main(argv: list[str] | None = None) -> None:
                     "dataset_id": row["dataset_id"], "dataset_revision": row["dataset_revision"],
                     "policy_version": pol.policy_version, "sharing_mode": pol.sharing_mode,
                     "allowed_accounts": list(pol.allowed_accounts),
+                    "raw_accounts": list(pol.raw_accounts),
                 }))
             return
 
@@ -56,14 +59,23 @@ def main(argv: list[str] | None = None) -> None:
         if ds is None:
             raise SystemExit(f"unknown dataset {args.dataset}")
         conn.execute("BEGIN IMMEDIATE")
-        if args.cmd in ("revoke", "grant"):
+        if args.cmd in ("revoke", "grant", "raw-grant", "raw-revoke"):
             if conn.execute("SELECT 1 FROM accounts WHERE account_id = ?", (args.account,)).fetchone() is None:
                 conn.execute("ROLLBACK")
                 raise SystemExit(f"unknown account {args.account}")
-            if args.cmd == "revoke":
+            if args.cmd == "raw-revoke":
+                conn.execute("DELETE FROM raw_grants WHERE dataset_id = ? AND account_id = ?", (args.dataset, args.account))
+            elif args.cmd == "raw-grant":
+                conn.execute("INSERT OR IGNORE INTO raw_grants VALUES (?, ?)", (args.dataset, args.account))
+            elif args.cmd == "revoke":
                 conn.execute("DELETE FROM grants WHERE dataset_id = ? AND account_id = ?", (args.dataset, args.account))
             else:
                 conn.execute("INSERT OR IGNORE INTO grants VALUES (?, ?)", (args.dataset, args.account))
+            version = store.bump_policy_version(conn, args.dataset)
+        elif args.cmd == "require-person":
+            policy = store.get_policy(args.dataset)
+            types = list(dict.fromkeys([*policy.required_redactions, "PERSON"]))
+            conn.execute("UPDATE policies SET required_redactions = ? WHERE dataset_id = ?", (json.dumps(types), args.dataset))
             version = store.bump_policy_version(conn, args.dataset)
         elif args.cmd == "sharing":
             conn.execute("UPDATE policies SET sharing_mode = ? WHERE dataset_id = ?", (args.mode, args.dataset))
@@ -79,6 +91,13 @@ def main(argv: list[str] | None = None) -> None:
                          f"New synthetic ticket {n}: the export button is greyed out.\n")
             conn.execute("UPDATE datasets SET dataset_revision = dataset_revision + 1 WHERE dataset_id = ?", (args.dataset,))
             version = conn.execute("SELECT policy_version FROM policies WHERE dataset_id = ?", (args.dataset,)).fetchone()[0]
+        from datetime import datetime, timezone
+        import secrets
+        conn.execute("INSERT INTO audit_events VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)", (
+            "evt_" + secrets.token_hex(12), args.dataset, getattr(args, "account", None),
+            "source_changed" if args.cmd == "edit-source" else "permission_changed",
+            "local_operator", "demo_control", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            json.dumps({"operation": args.cmd, "policy_version": version})))
         conn.execute("COMMIT")
     print(f"{args.cmd}: dataset={args.dataset} policy_version={version}")
 

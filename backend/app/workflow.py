@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from . import policy as policy_mod
-from . import transform
+from . import transform, detection
 from .errors import ApiError
 from .receiver import ReceiverAdapter
 from .storage import Dataset, Policy, Store
@@ -111,7 +111,13 @@ class Workflow:
         except transform.SourceInvalid as exc:
             raise ApiError("DATASET_INVALID", message="The source dataset failed validation: " + "; ".join(exc.problems[:5]))
 
-        prepared = transform.prepare(source, purpose, pol.outbound_fields[purpose], pol.required_redactions, [])
+        try:
+            prepared = transform.prepare(source, purpose, pol.outbound_fields[purpose], pol.required_redactions, [])
+        except detection.DetectorUnavailable:
+            self.store.insert_request({**base, "status": "blocked", "decision": "block",
+                "reason_codes": ["DETECTOR_UNAVAILABLE"], "dataset_revision": ds.dataset_revision,
+                "final_policy_version": pol.policy_version, "occurred_at": _now()})
+            raise ApiError("DETECTOR_UNAVAILABLE", request_id)
         decision_label = "redact" if any(prepared.redaction_counts.values()) else "allow"
         self.store.insert_request(
             {
@@ -121,6 +127,8 @@ class Workflow:
                 "reason_codes": ["REDACTION_REQUIRED"] if decision_label == "redact" else [],
                 "dataset_revision": ds.dataset_revision,
                 "source_sha256": source.sha256,
+                "pipeline_fingerprint": transform.pipeline_fingerprint(),
+                "manual_spans": [],
                 "preview_policy_version": pol.policy_version,
                 "preview_policy_fp": policy_mod.fingerprint(pol),
                 "review_revision": 1,
@@ -135,14 +143,24 @@ class Workflow:
     # ------------------------------------------------------------------ #
     # Review (additional whole-message hiding only)
     # ------------------------------------------------------------------ #
-    def review(self, account_id: str, request_id: str, expected_revision: int, hide: list[int]) -> dict:
+    def review(self, account_id: str, request_id: str, expected_revision: int, hide: list[int],
+               manual_spans: list[dict] | None = None, expected_preview_hash: str | None = None) -> dict:
         req = self._owned(account_id, request_id)
         if req["status"] != "ready":
             raise ApiError("REQUEST_NOT_READY", request_id)
         if req["review_revision"] != expected_revision:
             raise ApiError("REVIEW_CHANGED", request_id)
 
+        if expected_preview_hash is not None and expected_preview_hash != req["preview_hash"]:
+            raise ApiError("PREVIEW_CHANGED", request_id)
         ds, pol, source = self._recheck_current(req)
+        spans = req["manual_spans"] if manual_spans is None else manual_spans
+        if spans and not self.store.has_raw_access(account_id, ds.dataset_id):
+            raise ApiError("RAW_ACCESS_DENIED", request_id)
+        try:
+            spans = transform.normalize_spans(source, spans)
+        except ValueError:
+            raise ApiError("INVALID_REVIEW", request_id)
 
         n = len(source.rows)
         if any(i < 0 or i >= n for i in hide):
@@ -151,13 +169,21 @@ class Workflow:
         if len(indices) >= n:
             raise ApiError("NO_CONTENT_TO_SEND", request_id)
 
-        prepared = transform.prepare(source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions, indices)
+        try:
+            prepared = transform.prepare(source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions, indices, spans)
+        except detection.DetectorUnavailable:
+            self._mark_blocked(req, ["DETECTOR_UNAVAILABLE"], pol.policy_version)
+            raise ApiError("DETECTOR_UNAVAILABLE", request_id) from None
         ok = self.store.update_request_if(
             request_id,
             {"status": "ready", "review_revision": expected_revision},
             {
                 "review_revision": expected_revision + 1,
                 "hidden_indices": indices,
+                "manual_spans": spans,
+                "decision": "redact" if spans or indices or any(prepared.redaction_counts.values()) else "allow",
+                "reason_codes": (["REDACTION_REQUIRED"] if any(prepared.redaction_counts.values()) else [])
+                                + (["ADDITIONAL_HIDING"] if spans or indices else []),
                 "redaction_counts": prepared.redaction_counts,
                 "preview_hash": prepared.preview_hash,
             },
@@ -184,12 +210,20 @@ class Workflow:
         ds, pol, source = self._recheck_current(req)
 
         # Rebuild from backend source + stored choices; never from client content.
-        prepared = transform.prepare(
-            source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions, req["hidden_indices"]
-        )
+        try:
+            prepared = transform.prepare(
+                source, req["purpose"], pol.outbound_fields[req["purpose"]], pol.required_redactions, req["hidden_indices"], req["manual_spans"]
+            )
+        except detection.DetectorUnavailable:
+            self._mark_blocked(req, ["DETECTOR_UNAVAILABLE"], pol.policy_version)
+            raise ApiError("DETECTOR_UNAVAILABLE", request_id) from None
         if prepared.preview_hash != req["preview_hash"]:
             self._mark_stale(req, "PREVIEW_CHANGED")
             raise ApiError("PREVIEW_CHANGED", request_id)
+
+        # NER may take time: check again AFTER rebuilding, immediately before
+        # claiming dispatch. Revocation during preparation must still block.
+        ds, pol, source = self._recheck_current(req)
 
         # Atomic claim: exactly one competing Send can move ready -> sending.
         claimed = self.store.update_request_if(
@@ -302,6 +336,12 @@ class Workflow:
             self._mark_blocked(req, list(decision.reason_codes), pol.policy_version)
             raise ApiError(decision.reason_codes[0], rid)
 
+        if "PERSON" in pol.required_redactions and not detection.detector_status()["available"]:
+            self._mark_blocked(req, ["DETECTOR_UNAVAILABLE"], pol.policy_version)
+            raise ApiError("DETECTOR_UNAVAILABLE", rid)
+        if req.get("pipeline_fingerprint") != transform.pipeline_fingerprint():
+            self._mark_stale(req, "PREVIEW_CHANGED")
+            raise ApiError("PREVIEW_CHANGED", rid)
         current_sha = _source_sha(self.sources_dir / ds.source_file)
         if ds.dataset_revision != req["dataset_revision"] or current_sha != req["source_sha256"]:
             self._mark_stale(req, "DATASET_CHANGED")
@@ -334,7 +374,36 @@ class Workflow:
         )
 
     def _response(self, req: dict[str, Any], prepared: transform.PreparedPayload | None) -> dict:
+        if prepared:
+            # Do not expose even a transformed preview if access changed during
+            # detector inference or an accepted review update.
+            self._recheck_current(req)
+        raw_allowed = bool(prepared and self.store.has_raw_access(req["account_id"], req["dataset_id"]))
+        explanations = []
+        if prepared:
+            explanations = [{"field": "message", "result": "included", "rule_id": "purpose.feedback_summary.message",
+                             "explanation": "Message text is required to summarize recurring feedback."}]
+            explanations += [{"field": field, "result": "excluded", "rule_id": "purpose.feedback_summary.minimize",
+                              "explanation": "This field is not required for feedback summary."}
+                             for field in prepared.dropped_fields]
+            explanations += [{"field": category + " inside message", "result": "redacted",
+                              "rule_id": "mandatory." + category,
+                              "explanation": f"Owner policy requires {category} replacement; {count} detected occurrence(s)."}
+                             for category, count in prepared.redaction_counts.items()]
+            if req.get("manual_spans") or req["hidden_indices"]:
+                explanations.append({"field": "Requester choices", "result": "redacted", "rule_id": "review.additional_hiding",
+                                     "explanation": "Additional selected spans or whole messages were hidden by this analyst."})
+        else:
+            explanations = [{"field": "Outbound request", "result": "excluded", "rule_id": code,
+                             "explanation": "The configured policy or required processing blocked sharing."}
+                            for code in req["reason_codes"]]
         return {
+            "raw_view_allowed": raw_allowed,
+            "original_messages": prepared.original_messages if raw_allowed else None,
+            "findings": prepared.findings if raw_allowed else [],
+            "manual_spans": req.get("manual_spans", []),
+            "detector_status": detection.detector_status(),
+            "policy_explanations": explanations,
             "request_id": req["request_id"],
             "dataset_id": req["dataset_id"],
             "dataset_revision": req["dataset_revision"],
@@ -352,3 +421,20 @@ class Workflow:
             "receiver_attempts": req["receiver_attempts"],
             "receipt_available": req["status"] in FINAL_STATUSES,
         }
+
+
+    def history(self, account_id, dataset_id=None, decision=None, user_id=None):
+        if user_id is not None and user_id != account_id:
+            raise ApiError("REQUEST_ACCESS_DENIED")
+        requests = self.store.history(account_id, dataset_id, decision)
+        return {"requests": requests, "total": len(requests)}
+
+    def timeline(self, account_id, request_id):
+        req = self._owned(account_id, request_id)
+        return {"request_id": request_id, "events": self.store.timeline(req)}
+
+    def audit(self, account_id, request_id):
+        req = self._owned(account_id, request_id)
+        return {"schema_version": "1.1", "request": self.store.history_row(req),
+                "events": self.store.timeline(req),
+                "receipt": self.receipt(account_id, request_id) if req["status"] in FINAL_STATUSES else None}
